@@ -1,0 +1,10 @@
+# Environnements virtuels
+.venv/
+venv/
+ENV/
+
+# Système & Éditeurs
+.DS_Store
+*.swp
+.vscode/
+.idea/
