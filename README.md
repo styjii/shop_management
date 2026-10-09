@@ -8,6 +8,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![Status](https://img.shields.io/badge/status-en%20d%C3%A9veloppement-orange)
 ![License](https://img.shields.io/badge/licence-MIT-green)
+![CI](https://github.com/styjii/shop_management/actions/workflows/ci.yml/badge.svg)
 
 Par **[styjii](https://github.com/styjii)** (username : `styjii`).
 
@@ -146,6 +147,7 @@ shop_management/
 │   ├── base.txt                   # dépendances d'exécution
 │   ├── dev.txt                    # développement (typage, audit)
 │   └── prod.txt                   # production (gunicorn, PostgreSQL)
+├── .github/workflows/ci.yml       # intégration continue (GitHub Actions)
 ├── .env.example                   # modèle de configuration (sans secret)
 ├── .gitignore
 ├── LICENSE
@@ -276,6 +278,16 @@ pyright
 # Frontend
 cd frontend && npx ng test
 ```
+
+### Intégration continue
+
+Le workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) s'exécute à chaque `push` sur `main` et à chaque Pull Request :
+
+- **Backend** (Python 3.12 et 3.13) : Ruff, Pyright, vérification des migrations, tests Django.
+- **Frontend** : `ng build` puis `ng test` en Chrome sans interface.
+- **Audit** des dépendances (`pip-audit`, `npm audit`), à titre informatif.
+
+Le résultat s'affiche dans l'onglet **Actions** du dépôt et sur le badge CI en haut de ce fichier.
 
 ## Sécurité
 
