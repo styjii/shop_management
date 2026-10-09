@@ -58,7 +58,7 @@ class SaleItemInline(admin.TabularInline):
     model = SaleItem
     extra = 0
     fields = ["product", "quantity", "unit_price"]
-    readonly_fields = fields
+    readonly_fields = ["product", "quantity", "unit_price"]
 
     def has_add_permission(self, request, obj=None):
         return False

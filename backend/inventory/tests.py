@@ -1,4 +1,10 @@
+import os
+from io import StringIO
+from unittest import mock
+
 from django.contrib.auth.models import Group, User
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from rest_framework.test import APITestCase
 
 from .models import Category, Product, StockMovement
@@ -30,7 +36,7 @@ class SaleTests(InventoryAPITestCase):
         self.client.force_authenticate(self.seller)
 
     def sell(self, *lines):
-        items = [{"product": p.id, "quantity": q} for p, q in lines]
+        items = [{"product": p.pk, "quantity": q} for p, q in lines]
         return self.client.post("/api/sales/", {"items": items}, format="json")
 
     def test_sale_decrements_stock_and_logs_movement(self):
@@ -88,7 +94,7 @@ class ProductTests(InventoryAPITestCase):
     def test_manager_can_create_product(self):
         self.client.force_authenticate(self.manager)
         response = self.client.post("/api/products/", {
-            "sku": "NEW-1", "name": "Soda", "category": self.category.id,
+            "sku": "NEW-1", "name": "Soda", "category": self.category.pk,
             "price": "2.00", "quantity": 4, "low_stock_threshold": 2,
         }, format="json")
         self.assertEqual(response.status_code, 201)
@@ -107,7 +113,7 @@ class ProductTests(InventoryAPITestCase):
 
     def test_deleting_used_category_returns_409(self):
         self.client.force_authenticate(self.manager)
-        response = self.client.delete(f"/api/categories/{self.category.id}/")
+        response = self.client.delete(f"/api/categories/{self.category.pk}/")
         self.assertEqual(response.status_code, 409)
 
 
@@ -117,7 +123,7 @@ class StockMovementTests(InventoryAPITestCase):
 
     def move(self, kind, quantity):
         return self.client.post("/api/movements/", {
-            "product": self.water.id, "kind": kind, "quantity": quantity,
+            "product": self.water.pk, "kind": kind, "quantity": quantity,
         }, format="json")
 
     def test_in_out_and_adjustment_update_stock(self):
@@ -165,3 +171,28 @@ class AuthTests(InventoryAPITestCase):
         bad_token = self.client.get("/api/products/", headers={"Authorization": "Bearer abc"})
         self.assertEqual(bad_token.status_code, 401)
         self.assertEqual(bad_token.data["detail"], "Jeton invalide ou expiré.")
+
+
+class SetupDefaultsTests(APITestCase):
+    def run_command(self, *args):
+        out = StringIO()
+        call_command("setup_defaults", *args, stdout=out)
+        return out.getvalue()
+
+    def test_creates_groups_and_admin_once(self):
+        output = self.run_command()
+        admin = User.objects.get(username="admin")
+        self.assertTrue(admin.is_superuser)
+        self.assertTrue(admin.groups.filter(name=MANAGER_GROUP).exists())
+        self.assertTrue(Group.objects.filter(name=SELLER_GROUP).exists())
+        self.assertIn("Mot de passe généré", output)
+
+        second = self.run_command()
+        self.assertEqual(User.objects.filter(is_superuser=True).count(), 1)
+        self.assertIn("existe déjà", second)
+
+    def test_weak_password_from_environment_is_refused(self):
+        weak = {"DJANGO_DEFAULT_ADMIN_PASSWORD": "123"}
+        with mock.patch.dict(os.environ, weak), self.assertRaises(CommandError):
+            self.run_command()
+        self.assertFalse(User.objects.exists())

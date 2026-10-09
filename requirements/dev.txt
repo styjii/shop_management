@@ -1,6 +1,7 @@
 -r base.txt
 django-stubs==6.1.2
 django-stubs-ext==6.1.2
+djangorestframework-stubs==3.18.1
 types-PyYAML==6.0.12.20260906
 typing_extensions==4.16.0
 pip-audit

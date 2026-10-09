@@ -92,7 +92,7 @@ class StockMovement(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.get_kind_display()} : {self.quantity} × {self.product}"
+        return f"{self.Kind(self.kind).label} : {self.quantity} × {self.product}"
 
 
 class Sale(models.Model):

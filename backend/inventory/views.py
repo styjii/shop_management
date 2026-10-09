@@ -15,7 +15,7 @@ from .serializers import (
 )
 
 
-class ProtectedDeleteMixin:
+class ProtectedDeleteMixin(mixins.DestroyModelMixin):
     """Answer 409 instead of crashing when a PROTECTed object is deleted."""
 
     def destroy(self, request, *args, **kwargs):

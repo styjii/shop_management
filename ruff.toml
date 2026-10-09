@@ -1,0 +1,5 @@
+extend-exclude = ["**/migrations"]
+
+[lint]
+# RUF012 flags Django/DRF class attributes (fields, permission_classes, ...)
+ignore = ["RUF012"]

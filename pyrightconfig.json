@@ -1,0 +1,8 @@
+{
+  "include": ["backend"],
+  "exclude": ["**/migrations", "**/node_modules", "**/.venv", "frontend"],
+  "extraPaths": ["backend"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "reportIncompatibleVariableOverride": "none"
+}
