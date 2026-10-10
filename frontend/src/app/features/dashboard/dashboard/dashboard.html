@@ -1,0 +1,82 @@
+<h1 class="mb-4 text-2xl font-bold">Tableau de bord</h1>
+
+@if (error(); as message) {
+  <div role="alert" class="alert alert-error mb-4">
+    <span>{{ message }}</span>
+  </div>
+}
+
+<div class="stats stats-vertical mb-6 w-full bg-base-100 shadow sm:stats-horizontal">
+  <div class="stat">
+    <div class="stat-title">Produits en alerte</div>
+    <div class="stat-value" [class.text-warning]="alerts().length > 0">{{ alerts().length }}</div>
+    <div class="stat-desc">Stock sous le seuil</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">Ruptures de stock</div>
+    <div class="stat-value" [class.text-error]="outOfStock() > 0">{{ outOfStock() }}</div>
+    <div class="stat-desc">Quantité à zéro</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">Ventes enregistrées</div>
+    <div class="stat-value">{{ salesCount() }}</div>
+    <div class="stat-desc"><a routerLink="/sales" class="link">Nouvelle vente</a></div>
+  </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title">Produits à réapprovisionner</h2>
+      @if (loading()) {
+        <span class="loading loading-spinner"></span>
+      } @else if (alerts().length === 0) {
+        <p class="opacity-70">Aucune alerte : tous les stocks sont suffisants.</p>
+      } @else {
+        <ul class="list">
+          @for (p of alerts(); track p.id) {
+            <li class="list-row items-center">
+              <div class="list-col-grow">
+                <div class="font-medium">{{ p.name }}</div>
+                <div class="text-xs opacity-60">{{ p.sku }} · {{ p.category_name }}</div>
+              </div>
+              <span
+                class="badge"
+                [class.badge-error]="p.quantity === 0"
+                [class.badge-warning]="p.quantity > 0"
+              >
+                {{ p.quantity }} / seuil {{ p.low_stock_threshold }}
+              </span>
+            </li>
+          }
+        </ul>
+        <div class="card-actions justify-end">
+          <a routerLink="/products" class="btn btn-sm btn-outline">Voir les produits</a>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title">Dernières ventes</h2>
+      @if (recentSales().length === 0) {
+        <p class="opacity-70">Aucune vente pour le moment.</p>
+      } @else {
+        <ul class="list">
+          @for (s of recentSales(); track s.id) {
+            <li class="list-row items-center">
+              <div class="list-col-grow">
+                <div class="font-medium">Vente n°{{ s.id }}</div>
+                <div class="text-xs opacity-60">
+                  {{ s.created_at | date: 'dd/MM/yyyy HH:mm' }} · {{ s.seller }}
+                </div>
+              </div>
+              <span class="font-semibold">{{ s.total | currency: 'EUR' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </section>
+</div>

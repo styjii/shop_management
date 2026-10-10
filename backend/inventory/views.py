@@ -32,6 +32,7 @@ class CategoryViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsManagerOrReadOnly]
+    pagination_class = None  # a short list, used as a whole by the frontend selects
 
 
 class ProductViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):

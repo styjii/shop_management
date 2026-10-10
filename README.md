@@ -37,7 +37,7 @@ Par **[styjii](https://github.com/styjii)** (username : `styjii`).
 **Shop Management** est une application web complète de type Mini-ERP. Elle reproduit les briques que l'on retrouve dans les logiciels d'entreprise : authentification, rôles, base relationnelle, formulaires dynamiques et tableaux filtrables.
 
 - **Backend** : API REST avec Django et Django REST Framework, base SQL. *(fonctionnel)*
-- **Frontend** : application monopage Angular. *(en cours)*
+- **Frontend** : application monopage Angular 21 avec Tailwind CSS et daisyUI. *(fonctionnel)*
 
 Convention du projet : le **code reste en anglais**, les **sorties** (administration, libellés, messages d'erreur) sont **en français**.
 
@@ -53,6 +53,7 @@ Convention du projet : le **code reste en anglais**, les **sorties** (administra
 - **Suppression protégée** : une catégorie ou un produit déjà utilisé ne peut pas être supprimé (réponse 409 claire).
 - **Administration Django en français** ; les ventes et mouvements y sont en lecture seule pour préserver la cohérence du stock.
 - **Initialisation en une commande** : groupes et compte administrateur par défaut.
+- **Interface Angular** : connexion, tableau de bord des alertes, tableau de produits filtrable (recherche, catégorie, tri, pagination), formulaire de produit avec image et ajout de catégorie, caisse avec panier, menu adapté au rôle et au mobile.
 
 ## Stack technique
 
@@ -90,13 +91,18 @@ Les dépendances sont réparties en trois fichiers dans `requirements/`.
 
 ### Frontend
 
-- Angular (composants autonomes, signaux, formulaires réactifs, `HttpClient`)
-- TypeScript, RxJS
-- Tests unitaires : Karma / Jasmine
+| Technologie | Rôle |
+|---|---|
+| Angular 21 | Composants autonomes, signaux, formulaires réactifs, `HttpClient`, sans `zone.js` |
+| TypeScript, RxJS | Typage strict, flux asynchrones (recherche instantanée, rafraîchissement du jeton) |
+| Tailwind CSS 4 | Utilitaires CSS (`@tailwindcss/postcss`) |
+| daisyUI 5 | Composants d'interface (navbar, tableaux, formulaires, modales, toasts) |
+| Vitest + jsdom | Tests unitaires (aucun navigateur requis) |
+| Prettier | Formatage du code |
 
 ### Outils
 
-`git`, `pip` + `venv`, `npm` + Angular CLI, `curl`, **Ruff** (lint) et **Pyright** (typage), configurés par `ruff.toml` et `pyrightconfig.json`. Développement possible sur mobile avec Termux.
+`git`, `pip` + `venv`, `npm` + Angular CLI, `curl`, HTTPie, **Ruff** (lint) et **Pyright** (typage), configurés par `ruff.toml` et `pyrightconfig.json`. Développement possible sur mobile avec Termux.
 
 ## Structure du projet
 
@@ -126,20 +132,31 @@ shop_management/
 │   │   └── views.py
 │   ├── .gitignore
 │   └── manage.py
-├── frontend/                      # Angular (squelette généré)
+├── frontend/                      # Angular + Tailwind + daisyUI
 │   ├── public/
 │   │   └── favicon.ico
 │   ├── src/
 │   │   ├── app/
+│   │   │   ├── core/              # auth, intercepteur JWT, gardes, erreurs, toasts
+│   │   │   ├── features/
+│   │   │   │   ├── auth/login/
+│   │   │   │   ├── dashboard/dashboard/
+│   │   │   │   ├── products/product-list/
+│   │   │   │   ├── products/product-form/
+│   │   │   │   └── sales/sale-pos/
+│   │   │   ├── models/inventory.ts
+│   │   │   ├── services/          # product, category, sale
 │   │   │   ├── app.config.ts
 │   │   │   ├── app.routes.ts
 │   │   │   ├── app.html
-│   │   │   ├── app.css
-│   │   │   ├── app.spec.ts
 │   │   │   └── app.ts
+│   │   ├── environments/          # URL de l'API (production / développement)
+│   │   ├── testing/factories.ts   # données de test
 │   │   ├── index.html
 │   │   ├── main.ts
-│   │   └── styles.css
+│   │   └── styles.css             # Tailwind + daisyUI
+│   ├── .postcssrc.json
+│   ├── .prettierrc
 │   ├── angular.json
 │   ├── package.json
 │   └── tsconfig*.json
@@ -234,6 +251,21 @@ cd frontend
 npx ng serve                      # http://localhost:4200
 ```
 
+Connectez-vous avec le compte créé par `setup_defaults`. En développement, l'application appelle l'API sur `http://<hôte>:8000/api` (voir `src/environments/environment.development.ts`). En production, elle appelle `/api` : un reverse proxy (Nginx) doit servir le frontend et relayer `/api` et `/media` vers Django.
+
+Pour l'ouvrir depuis un autre appareil du réseau local :
+
+```bash
+npx ng serve --host 0.0.0.0
+```
+
+puis ajoutez l'adresse IP à `DJANGO_ALLOWED_HOSTS` et `http://<ip>:4200` à `CORS_ALLOWED_ORIGINS` dans `.env`.
+
+| Écran | Accès |
+|---|---|
+| Connexion, tableau de bord, liste des produits, caisse | Tous les utilisateurs |
+| Création, modification et suppression de produits | Gestionnaire |
+
 ## API
 
 | Méthode | Endpoint | Description | Accès |
@@ -246,7 +278,7 @@ npx ng serve                      # http://localhost:4200
 | GET | `/api/products/low-stock/` | Produits sous le seuil | Connecté |
 | POST | `/api/products/` | Créer un produit | Gestionnaire |
 | PUT / PATCH / DELETE | `/api/products/<id>/` | Modifier / supprimer un produit | Gestionnaire |
-| GET | `/api/categories/` | Liste des catégories | Connecté |
+| GET | `/api/categories/` | Liste des catégories (sans pagination) | Connecté |
 | POST / PUT / PATCH / DELETE | `/api/categories/` | Gestion des catégories | Gestionnaire |
 | POST | `/api/sales/` | Enregistrer une vente | Connecté |
 | GET | `/api/sales/` | Lister les ventes (les siennes ou toutes) | Connecté |
@@ -275,8 +307,9 @@ cd backend && python manage.py test
 ruff check backend
 pyright
 
-# Frontend
-cd frontend && npx ng test
+# Frontend (Vitest, sans navigateur)
+cd frontend && npx ng test --watch=false
+cd frontend && npx prettier --check "src/**/*.{ts,html,css}"
 ```
 
 ### Intégration continue
@@ -284,7 +317,7 @@ cd frontend && npx ng test
 Le workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) s'exécute à chaque `push` sur `main` et à chaque Pull Request :
 
 - **Backend** (Python 3.12 et 3.13) : Ruff, Pyright, vérification des migrations, tests Django.
-- **Frontend** : `ng build` puis `ng test` en Chrome sans interface.
+- **Frontend** : Prettier, `ng build`, puis `ng test` (Vitest + jsdom, sans navigateur).
 - **Audit** des dépendances (`pip-audit`, `npm audit`), à titre informatif.
 
 Le résultat s'affiche dans l'onglet **Actions** du dépôt et sur le badge CI en haut de ce fichier.
@@ -315,8 +348,9 @@ cd frontend && npm audit
 - [x] Ventes et mouvements de stock
 - [x] Administration en français et commande `setup_defaults`
 - [x] Tests backend, Ruff et Pyright
-- [ ] Interface Angular (connexion, tableau filtrable, formulaires, caisse)
-- [ ] Tableau de bord des alertes
+- [x] Interface Angular (connexion, tableau filtrable, formulaires, caisse)
+- [x] Tableau de bord des alertes
+- [ ] Interface des mouvements de stock (entrées, sorties, ajustements)
 - [ ] Déploiement (PostgreSQL, Gunicorn, Nginx)
 
 ## Contribuer

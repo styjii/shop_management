@@ -1,0 +1,137 @@
+<h1 class="mb-4 text-2xl font-bold">Caisse</h1>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="lg:col-span-2">
+    <input
+      type="search"
+      class="input mb-4 w-full"
+      [formControl]="search"
+      placeholder="Rechercher un produit (nom ou SKU)"
+      aria-label="Rechercher un produit"
+    />
+
+    @if (loading()) {
+      <span class="loading loading-spinner"></span>
+    }
+
+    <div class="grid gap-3 sm:grid-cols-2">
+      @for (p of products(); track p.id) {
+        <div class="card card-compact bg-base-100 shadow">
+          <div class="card-body flex-row items-center justify-between gap-3 p-4">
+            <div class="min-w-0">
+              <div class="truncate font-medium">{{ p.name }}</div>
+              <div class="text-xs opacity-60">{{ p.sku }}</div>
+              <div class="mt-1 font-semibold">{{ p.price | currency: 'EUR' }}</div>
+              <div
+                class="text-xs"
+                [class.text-error]="p.quantity === 0"
+                [class.text-warning]="p.is_low_stock && p.quantity > 0"
+              >
+                Stock : {{ p.quantity }}
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              [disabled]="!canAdd(p)"
+              (click)="add(p)"
+            >
+              Ajouter
+            </button>
+          </div>
+        </div>
+      } @empty {
+        @if (!loading()) {
+          <p class="opacity-70 sm:col-span-2">Aucun produit trouvé.</p>
+        }
+      }
+    </div>
+  </section>
+
+  <aside class="lg:sticky lg:top-20 lg:self-start">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h2 class="card-title">Panier</h2>
+
+        @if (cart().length === 0) {
+          <p class="opacity-70">Le panier est vide.</p>
+        } @else {
+          <ul class="list">
+            @for (line of cart(); track line.product.id) {
+              <li class="list-row items-center">
+                <div class="list-col-grow min-w-0">
+                  <div class="truncate font-medium">{{ line.product.name }}</div>
+                  <div class="text-xs opacity-60">
+                    {{ line.product.price | currency: 'EUR' }} l'unité
+                  </div>
+                </div>
+                <div class="join">
+                  <button
+                    type="button"
+                    class="btn btn-xs join-item"
+                    aria-label="Retirer un"
+                    (click)="decrease(line)"
+                  >
+                    −
+                  </button>
+                  <span class="btn btn-xs join-item pointer-events-none">{{ line.quantity }}</span>
+                  <button
+                    type="button"
+                    class="btn btn-xs join-item"
+                    aria-label="Ajouter un"
+                    [disabled]="!canAdd(line.product)"
+                    (click)="add(line.product)"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error"
+                  aria-label="Supprimer la ligne"
+                  (click)="remove(line)"
+                >
+                  ✕
+                </button>
+              </li>
+            }
+          </ul>
+
+          <div class="divider my-1"></div>
+          <div class="flex items-center justify-between text-lg font-bold">
+            <span>Total</span>
+            <span data-testid="total">{{ total() | currency: 'EUR' }}</span>
+          </div>
+        }
+
+        @if (error(); as message) {
+          <div role="alert" class="alert alert-error alert-soft mt-2 text-sm">
+            <span>{{ message }}</span>
+          </div>
+        }
+
+        <div class="card-actions mt-2 justify-end">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            [disabled]="cart().length === 0"
+            (click)="clear()"
+          >
+            Vider
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="cart().length === 0 || submitting()"
+            (click)="validate()"
+          >
+            @if (submitting()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+            Valider la vente
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>

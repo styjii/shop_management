@@ -1,0 +1,159 @@
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+  <h1 class="text-2xl font-bold">Produits</h1>
+  @if (auth.isManager()) {
+    <a routerLink="/products/new" class="btn btn-primary btn-sm sm:btn-md">+ Nouveau produit</a>
+  }
+</div>
+
+<form [formGroup]="filters" class="card mb-4 bg-base-100 shadow">
+  <div class="card-body grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+    <input
+      type="search"
+      class="input w-full"
+      formControlName="search"
+      placeholder="Rechercher (nom ou SKU)"
+      aria-label="Rechercher"
+    />
+    <select class="select w-full" formControlName="category" aria-label="Catégorie">
+      <option [ngValue]="null">Toutes les catégories</option>
+      @for (c of categories(); track c.id) {
+        <option [ngValue]="c.id">{{ c.name }}</option>
+      }
+    </select>
+    <select class="select w-full" formControlName="ordering" aria-label="Tri">
+      <option value="name">Nom (A → Z)</option>
+      <option value="-name">Nom (Z → A)</option>
+      <option value="price">Prix croissant</option>
+      <option value="-price">Prix décroissant</option>
+      <option value="quantity">Stock croissant</option>
+      <option value="-quantity">Stock décroissant</option>
+    </select>
+    <label class="label cursor-pointer justify-start gap-3">
+      <input type="checkbox" class="toggle toggle-warning" formControlName="lowStock" />
+      <span>Stock bas uniquement</span>
+    </label>
+  </div>
+</form>
+
+@if (error(); as message) {
+  <div role="alert" class="alert alert-error mb-4">
+    <span>{{ message }}</span>
+  </div>
+}
+
+<p class="mb-2 text-sm opacity-70">
+  {{ count() }} produit(s)
+  @if (loading()) {
+    <span class="loading loading-spinner loading-xs ml-2"></span>
+  }
+</p>
+
+<div class="overflow-x-auto rounded-box bg-base-100 shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Produit</th>
+        <th class="hidden sm:table-cell">Catégorie</th>
+        <th class="text-right">Prix</th>
+        <th class="text-right">Stock</th>
+        @if (auth.isManager()) {
+          <th></th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of products(); track p.id) {
+        <tr>
+          <td>
+            <div class="flex items-center gap-3">
+              @if (p.image) {
+                <div class="avatar">
+                  <div class="h-10 w-10 rounded-lg">
+                    <img [src]="p.image" [alt]="p.name" />
+                  </div>
+                </div>
+              }
+              <div>
+                <div class="font-medium">{{ p.name }}</div>
+                <div class="text-xs opacity-60">{{ p.sku }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="hidden sm:table-cell">{{ p.category_name }}</td>
+          <td class="text-right">{{ p.price | currency: 'EUR' }}</td>
+          <td class="text-right">
+            <span class="font-semibold">{{ p.quantity }}</span>
+            @if (!p.is_active) {
+              <span class="badge badge-ghost badge-sm ml-1">Hors vente</span>
+            } @else if (p.quantity === 0) {
+              <span class="badge badge-error badge-sm ml-1">Rupture</span>
+            } @else if (p.is_low_stock) {
+              <span class="badge badge-warning badge-sm ml-1">Stock bas</span>
+            }
+          </td>
+          @if (auth.isManager()) {
+            <td class="whitespace-nowrap text-right">
+              <a [routerLink]="['/products', p.id, 'edit']" class="btn btn-ghost btn-xs"
+                >Modifier</a
+              >
+              <button type="button" class="btn btn-ghost btn-xs text-error" (click)="askDelete(p)">
+                Supprimer
+              </button>
+            </td>
+          }
+        </tr>
+      } @empty {
+        @if (!loading()) {
+          <tr>
+            <td [attr.colspan]="auth.isManager() ? 5 : 4" class="py-8 text-center opacity-70">
+              Aucun produit trouvé.
+            </td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (pageCount() > 1) {
+  <div class="mt-4 flex justify-center">
+    <div class="join">
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() <= 1"
+        (click)="goTo(page() - 1)"
+      >
+        «
+      </button>
+      <button type="button" class="btn join-item pointer-events-none">
+        Page {{ page() }} / {{ pageCount() }}
+      </button>
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() >= pageCount()"
+        (click)="goTo(page() + 1)"
+      >
+        »
+      </button>
+    </div>
+  </div>
+}
+
+@if (toDelete(); as product) {
+  <div class="modal modal-open" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Supprimer ce produit ?</h3>
+      <p class="py-4">
+        « {{ product.name }} » sera supprimé définitivement. Si le produit a déjà été vendu,
+        désactivez-le plutôt (case « En vente » du formulaire).
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn btn-error" (click)="confirmDelete()">Supprimer</button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="cancelDelete()"></div>
+  </div>
+}

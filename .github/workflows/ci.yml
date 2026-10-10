@@ -72,14 +72,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check formatting (Prettier)
+        run: npx prettier --check "src/**/*.{ts,html,css}"
+
       - name: Build
         run: npx ng build
 
-      - name: Allow headless Chrome sandbox on Ubuntu 24.04
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-
-      - name: Run tests
-        run: npx ng test --watch=false --browsers=ChromeHeadless
+      - name: Run tests (Vitest + jsdom, no browser needed)
+        run: npx ng test --watch=false
 
   security:
     name: Dependency audit

@@ -1,10 +1,14 @@
 import os
-from io import StringIO
+import tempfile
+from io import BytesIO, StringIO
 from unittest import mock
 
 from django.contrib.auth.models import Group, User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.test import override_settings
+from PIL import Image
 from rest_framework.test import APITestCase
 
 from .models import Category, Product, StockMovement
@@ -115,6 +119,52 @@ class ProductTests(InventoryAPITestCase):
         self.client.force_authenticate(self.manager)
         response = self.client.delete(f"/api/categories/{self.category.pk}/")
         self.assertEqual(response.status_code, 409)
+
+
+class FrontendContractTests(InventoryAPITestCase):
+    """Requests shaped exactly like the ones sent by the Angular frontend."""
+
+    def test_categories_are_returned_as_a_plain_list(self):
+        for index in range(25):
+            Category.objects.create(name=f"Categorie {index}")
+        self.client.force_authenticate(self.seller)
+        response = self.client.get("/api/categories/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.data, list)
+        self.assertEqual(len(response.data), 26)
+
+    def test_product_can_be_created_with_multipart_and_an_image(self):
+        buffer = BytesIO()
+        Image.new("RGB", (4, 4), "red").save(buffer, format="PNG")
+        image = SimpleUploadedFile("photo.png", buffer.getvalue(), content_type="image/png")
+        self.client.force_authenticate(self.manager)
+
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            response = self.client.post("/api/products/", {
+                "sku": "IMG-1", "name": "Avec image", "category": str(self.category.pk),
+                "price": "1.5", "quantity": "7", "low_stock_threshold": "2",
+                "is_active": "true", "image": image,
+            }, format="multipart")
+
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(response.data["image"].endswith(".png"))
+        self.assertEqual(response.data["price"], "1.50")
+
+    def test_product_update_without_image_keeps_the_existing_one(self):
+        self.client.force_authenticate(self.manager)
+        response = self.client.put(f"/api/products/{self.water.pk}/", {
+            "sku": "WATER-1", "name": "Eau", "category": self.category.pk,
+            "price": 2, "quantity": 10, "low_stock_threshold": 5, "is_active": False,
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["is_active"])
+
+    def test_sales_list_is_paginated_with_items(self):
+        self.client.force_authenticate(self.seller)
+        self.client.post("/api/sales/", {"items": [{"product": self.water.pk, "quantity": 1}]}, format="json")
+        response = self.client.get("/api/sales/?page=1")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["items"][0]["unit_price"], "1.50")
 
 
 class StockMovementTests(InventoryAPITestCase):

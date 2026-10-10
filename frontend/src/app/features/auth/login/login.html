@@ -1,0 +1,52 @@
+<div class="flex min-h-[80vh] items-center justify-center">
+  <div class="card w-full max-w-sm bg-base-100 shadow-xl">
+    <form class="card-body gap-3" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="text-center">
+        <h1 class="card-title justify-center text-2xl">Shop Management</h1>
+        <p class="text-sm opacity-70">Connectez-vous pour gérer votre stock</p>
+      </div>
+
+      @if (error(); as message) {
+        <div role="alert" class="alert alert-error alert-soft text-sm">
+          <span>{{ message }}</span>
+        </div>
+      }
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Identifiant</legend>
+        <input
+          type="text"
+          class="input w-full"
+          [class.input-error]="form.controls.username.touched && form.controls.username.invalid"
+          formControlName="username"
+          autocomplete="username"
+          autofocus
+        />
+        @if (form.controls.username.touched && form.controls.username.invalid) {
+          <p class="label text-error">L'identifiant est obligatoire.</p>
+        }
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Mot de passe</legend>
+        <input
+          type="password"
+          class="input w-full"
+          [class.input-error]="form.controls.password.touched && form.controls.password.invalid"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <p class="label text-error">Le mot de passe est obligatoire.</p>
+        }
+      </fieldset>
+
+      <button type="submit" class="btn btn-primary mt-2" [disabled]="loading()">
+        @if (loading()) {
+          <span class="loading loading-spinner loading-sm"></span>
+        }
+        Se connecter
+      </button>
+    </form>
+  </div>
+</div>
