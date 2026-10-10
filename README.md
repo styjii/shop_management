@@ -53,7 +53,7 @@ Convention du projet : le **code reste en anglais**, les **sorties** (administra
 - **Suppression protégée** : une catégorie ou un produit déjà utilisé ne peut pas être supprimé (réponse 409 claire).
 - **Administration Django en français** ; les ventes et mouvements y sont en lecture seule pour préserver la cohérence du stock.
 - **Initialisation en une commande** : groupes et compte administrateur par défaut.
-- **Interface Angular** : connexion, tableau de bord des alertes, tableau de produits filtrable (recherche, catégorie, tri, pagination), formulaire de produit avec image et ajout de catégorie, caisse avec panier, menu adapté au rôle et au mobile.
+- **Interface Angular** : connexion, tableau de bord des alertes, tableau de produits filtrable (recherche, catégorie, tri, pagination), formulaire de produit avec image, caisse avec panier, historique des ventes avec détail, gestion des catégories, mouvements de stock (entrée, sortie, ajustement), menu adapté au rôle et au mobile.
 
 ## Stack technique
 
@@ -143,9 +143,12 @@ shop_management/
 │   │   │   │   ├── dashboard/dashboard/
 │   │   │   │   ├── products/product-list/
 │   │   │   │   ├── products/product-form/
-│   │   │   │   └── sales/sale-pos/
+│   │   │   │   ├── categories/categories/
+│   │   │   │   ├── movements/movements/
+│   │   │   │   ├── sales/sale-pos/
+│   │   │   │   └── sales/sale-history/
 │   │   │   ├── models/inventory.ts
-│   │   │   ├── services/          # product, category, sale
+│   │   │   ├── services/          # product, category, movement, sale
 │   │   │   ├── app.config.ts
 │   │   │   ├── app.routes.ts
 │   │   │   ├── app.html
@@ -261,10 +264,18 @@ npx ng serve --host 0.0.0.0
 
 puis ajoutez l'adresse IP à `DJANGO_ALLOWED_HOSTS` et `http://<ip>:4200` à `CORS_ALLOWED_ORIGINS` dans `.env`.
 
-| Écran | Accès |
-|---|---|
-| Connexion, tableau de bord, liste des produits, caisse | Tous les utilisateurs |
-| Création, modification et suppression de produits | Gestionnaire |
+| Écran | Route | Accès |
+|---|---|---|
+| Connexion | `/login` | Public |
+| Tableau de bord (alertes, dernières ventes) | `/dashboard` | Tous les utilisateurs |
+| Liste des produits (recherche, filtres, tri) | `/products` | Tous les utilisateurs |
+| Caisse | `/sales` | Tous les utilisateurs |
+| Historique des ventes (détail par vente) | `/sales/history` | Tous (un vendeur ne voit que les siennes) |
+| Création et modification de produit | `/products/new`, `/products/:id/edit` | Gestionnaire |
+| Catégories (ajout, modification, suppression) | `/categories` | Gestionnaire |
+| Mouvements de stock (entrée, sortie, ajustement) | `/movements` | Gestionnaire |
+
+Depuis le tableau de bord ou la liste des produits, le lien « Réapprovisionner » / « Stock » ouvre `/movements?product=<id>` pour le produit concerné.
 
 ## API
 
@@ -350,7 +361,7 @@ cd frontend && npm audit
 - [x] Tests backend, Ruff et Pyright
 - [x] Interface Angular (connexion, tableau filtrable, formulaires, caisse)
 - [x] Tableau de bord des alertes
-- [ ] Interface des mouvements de stock (entrées, sorties, ajustements)
+- [x] Interface des mouvements de stock, historique des ventes et catégories
 - [ ] Déploiement (PostgreSQL, Gunicorn, Nginx)
 
 ## Contribuer

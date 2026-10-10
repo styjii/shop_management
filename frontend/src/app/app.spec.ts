@@ -41,4 +41,20 @@ describe('App', () => {
     expect(text).toContain('Déconnexion');
     http.verify();
   });
+
+  it('shows the manager links only to managers', async () => {
+    sessionStorage.setItem('access', 'token');
+    const http = setup();
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    http
+      .expectOne(`${environment.apiUrl}/auth/me/`)
+      .flush({ username: 'vendeur', is_manager: false });
+    await fixture.whenStable();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Historique');
+    expect(text).not.toContain('Mouvements');
+    expect(text).not.toContain('Catégories');
+  });
 });

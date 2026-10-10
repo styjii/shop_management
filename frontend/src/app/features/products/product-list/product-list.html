@@ -93,6 +93,12 @@
           </td>
           @if (auth.isManager()) {
             <td class="whitespace-nowrap text-right">
+              <a
+                [routerLink]="['/movements']"
+                [queryParams]="{ product: p.id }"
+                class="btn btn-ghost btn-xs"
+                >Stock</a
+              >
               <a [routerLink]="['/products', p.id, 'edit']" class="btn btn-ghost btn-xs"
                 >Modifier</a
               >

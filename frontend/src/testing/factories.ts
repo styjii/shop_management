@@ -1,4 +1,4 @@
-import { Product, Sale } from '../app/models/inventory';
+import { Product, Sale, StockMovement } from '../app/models/inventory';
 
 export function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
@@ -23,7 +23,21 @@ export function makeSale(overrides: Partial<Sale> = {}): Sale {
     seller: 'vendeur',
     created_at: '2026-10-09T10:00:00Z',
     total: '4.50',
-    items: [{ product: 1, quantity: 3, unit_price: '1.50' }],
+    items: [{ product: 1, product_name: 'Eau minérale', quantity: 3, unit_price: '1.50' }],
+    ...overrides,
+  };
+}
+
+export function makeMovement(overrides: Partial<StockMovement> = {}): StockMovement {
+  return {
+    id: 1,
+    product: 1,
+    product_name: 'Eau minérale',
+    kind: 'IN',
+    quantity: 10,
+    reason: 'Livraison',
+    created_by: 'chef',
+    created_at: '2026-10-09T09:00:00Z',
     ...overrides,
   };
 }

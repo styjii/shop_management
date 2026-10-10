@@ -58,9 +58,11 @@ class StockMovementSerializer(serializers.ModelSerializer):
 
 
 class SaleItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source="product.name")
+
     class Meta:
         model = SaleItem
-        fields = ["product", "quantity", "unit_price"]
+        fields = ["product", "product_name", "quantity", "unit_price"]
         read_only_fields = ["unit_price"]
 
 

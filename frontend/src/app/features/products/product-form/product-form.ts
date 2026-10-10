@@ -92,7 +92,7 @@ export class ProductForm {
   addCategory() {
     const name = this.newCategory.value.trim();
     if (!name) return;
-    this.categoryApi.create(name).subscribe({
+    this.categoryApi.create({ name }).subscribe({
       next: (category) => {
         this.categories.update((list) =>
           [...list, category].sort((a, b) => a.name.localeCompare(b.name)),

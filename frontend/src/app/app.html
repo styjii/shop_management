@@ -55,7 +55,19 @@
 <ng-template #links>
   <li><a routerLink="/dashboard" routerLinkActive="menu-active">Tableau de bord</a></li>
   <li><a routerLink="/products" routerLinkActive="menu-active">Produits</a></li>
-  <li><a routerLink="/sales" routerLinkActive="menu-active">Caisse</a></li>
+  <li>
+    <a
+      routerLink="/sales"
+      routerLinkActive="menu-active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      >Caisse</a
+    >
+  </li>
+  <li><a routerLink="/sales/history" routerLinkActive="menu-active">Historique</a></li>
+  @if (auth.isManager()) {
+    <li><a routerLink="/movements" routerLinkActive="menu-active">Mouvements</a></li>
+    <li><a routerLink="/categories" routerLinkActive="menu-active">Catégories</a></li>
+  }
 </ng-template>
 
 <main class="mx-auto w-full max-w-6xl p-4 sm:p-6">

@@ -74,6 +74,7 @@ describe('ProductList', () => {
     expect(text).toContain('Nouveau produit');
     expect(text).toContain('Modifier');
     expect(text).toContain('Supprimer');
+    expect(text).toContain('Stock');
   });
 
   it('searches after a short pause and goes back to the first page', async () => {

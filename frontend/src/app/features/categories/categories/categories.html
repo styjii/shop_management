@@ -1,0 +1,117 @@
+<h1 class="mb-4 text-2xl font-bold">Catégories</h1>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="lg:col-span-1">
+    <form [formGroup]="form" (ngSubmit)="save()" class="card bg-base-100 shadow" novalidate>
+      <div class="card-body gap-3">
+        <h2 class="card-title">{{ editing() ? 'Modifier la catégorie' : 'Nouvelle catégorie' }}</h2>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Nom</legend>
+          <input
+            type="text"
+            class="input w-full"
+            formControlName="name"
+            [class.input-error]="
+              (form.controls.name.touched && form.controls.name.invalid) ||
+              errorsFor('name').length > 0
+            "
+          />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <p class="label text-error">Le nom est obligatoire (100 caractères maximum).</p>
+          }
+          @for (message of errorsFor('name'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Description (facultatif)</legend>
+          <textarea class="textarea w-full" rows="3" formControlName="description"></textarea>
+        </fieldset>
+
+        <div class="card-actions justify-end">
+          @if (editing()) {
+            <button type="button" class="btn" (click)="cancelEdit()">Annuler</button>
+          }
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">
+            @if (saving()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+            {{ editing() ? 'Enregistrer' : 'Ajouter' }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section class="lg:col-span-2">
+    @if (error(); as message) {
+      <div role="alert" class="alert alert-error mb-3">
+        <span>{{ message }}</span>
+      </div>
+    }
+
+    <p class="mb-2 text-sm opacity-70">
+      {{ categories().length }} catégorie(s)
+      @if (loading()) {
+        <span class="loading loading-spinner loading-xs ml-2"></span>
+      }
+    </p>
+
+    <div class="overflow-x-auto rounded-box bg-base-100 shadow">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th class="hidden sm:table-cell">Description</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of categories(); track c.id) {
+            <tr>
+              <td class="font-medium">{{ c.name }}</td>
+              <td class="hidden sm:table-cell">{{ c.description || '—' }}</td>
+              <td class="whitespace-nowrap text-right">
+                <button type="button" class="btn btn-ghost btn-xs" (click)="edit(c)">
+                  Modifier
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error"
+                  (click)="askDelete(c)"
+                >
+                  Supprimer
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            @if (!loading()) {
+              <tr>
+                <td colspan="3" class="py-8 text-center opacity-70">Aucune catégorie.</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+@if (toDelete(); as category) {
+  <div class="modal modal-open" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Supprimer cette catégorie ?</h3>
+      <p class="py-4">
+        « {{ category.name }} » sera supprimée. Une catégorie qui contient encore des produits ne
+        peut pas être supprimée.
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn btn-error" (click)="confirmDelete()">Supprimer</button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="cancelDelete()"></div>
+  </div>
+}

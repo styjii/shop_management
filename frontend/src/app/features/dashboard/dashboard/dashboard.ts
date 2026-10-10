@@ -1,6 +1,7 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/auth';
 import { Product, Sale } from '../../../models/inventory';
 import { ProductService } from '../../../services/product';
 import { SaleService } from '../../../services/sale';
@@ -12,6 +13,8 @@ import { extractError } from '../../../core/errors';
   templateUrl: './dashboard.html',
 })
 export class Dashboard {
+  protected readonly auth = inject(AuthService);
+
   readonly alerts = signal<Product[]>([]);
   readonly recentSales = signal<Sale[]>([]);
   readonly salesCount = signal(0);

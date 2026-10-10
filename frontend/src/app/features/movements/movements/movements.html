@@ -1,0 +1,215 @@
+<h1 class="mb-4 text-2xl font-bold">Mouvements de stock</h1>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <!-- New movement -->
+  <section class="lg:col-span-1">
+    <form [formGroup]="form" (ngSubmit)="submit()" class="card bg-base-100 shadow" novalidate>
+      <div class="card-body gap-3">
+        <h2 class="card-title">Nouveau mouvement</h2>
+
+        @if (generalError(); as message) {
+          <div role="alert" class="alert alert-error alert-soft text-sm">
+            <span>{{ message }}</span>
+          </div>
+        }
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Produit</legend>
+          <input
+            type="search"
+            class="input w-full"
+            [formControl]="productSearch"
+            placeholder="Rechercher (nom ou SKU)"
+            aria-label="Rechercher un produit"
+          />
+          <select
+            class="select mt-2 w-full"
+            formControlName="product"
+            aria-label="Produit"
+            [class.select-error]="form.controls.product.touched && form.controls.product.invalid"
+          >
+            <option [ngValue]="null" disabled>Choisir un produit</option>
+            @for (p of candidates(); track p.id) {
+              <option [ngValue]="p.id">{{ p.name }} ({{ p.sku }})</option>
+            }
+          </select>
+          @if (form.controls.product.touched && form.controls.product.invalid) {
+            <p class="label text-error">Choisissez un produit.</p>
+          }
+          @for (message of errorsFor('product'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+          @if (selected(); as product) {
+            <p class="label" data-testid="current-stock">
+              Stock actuel : <strong>{{ product.quantity }}</strong> (seuil
+              {{ product.low_stock_threshold }})
+            </p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Type de mouvement</legend>
+          <select class="select w-full" formControlName="kind" aria-label="Type de mouvement">
+            @for (k of kinds; track k.value) {
+              <option [value]="k.value">{{ k.label }}</option>
+            }
+          </select>
+          <p class="label">{{ currentHint() }}</p>
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Quantité</legend>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            class="input w-full"
+            formControlName="quantity"
+            [class.input-error]="
+              (form.controls.quantity.touched && form.controls.quantity.invalid) ||
+              errorsFor('quantity').length > 0
+            "
+          />
+          @if (form.controls.quantity.touched && form.controls.quantity.invalid) {
+            <p class="label text-error">La quantité doit être d'au moins 1.</p>
+          }
+          @for (message of errorsFor('quantity'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Motif (facultatif)</legend>
+          <input
+            type="text"
+            class="input w-full"
+            formControlName="reason"
+            maxlength="200"
+            placeholder="Livraison fournisseur, casse, inventaire…"
+          />
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary mt-2" [disabled]="saving()">
+          @if (saving()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          Enregistrer le mouvement
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- History -->
+  <section class="lg:col-span-2">
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+      <h2 class="text-lg font-semibold">Historique</h2>
+      <select
+        class="select select-sm ml-auto w-44"
+        [formControl]="kindFilter"
+        aria-label="Filtrer par type"
+      >
+        <option value="">Tous les types</option>
+        @for (k of kinds; track k.value) {
+          <option [value]="k.value">{{ k.label }}</option>
+        }
+      </select>
+    </div>
+
+    @if (filterProduct(); as product) {
+      <div class="mb-3 flex items-center gap-2">
+        <span class="badge badge-outline badge-lg gap-2">
+          Produit : {{ product.name }}
+          <button
+            type="button"
+            class="cursor-pointer"
+            aria-label="Retirer le filtre"
+            (click)="clearProductFilter()"
+          >
+            ✕
+          </button>
+        </span>
+      </div>
+    }
+
+    @if (error(); as message) {
+      <div role="alert" class="alert alert-error mb-3">
+        <span>{{ message }}</span>
+      </div>
+    }
+
+    <p class="mb-2 text-sm opacity-70">
+      {{ count() }} mouvement(s)
+      @if (loading()) {
+        <span class="loading loading-spinner loading-xs ml-2"></span>
+      }
+    </p>
+
+    <div class="overflow-x-auto rounded-box bg-base-100 shadow">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Produit</th>
+            <th>Type</th>
+            <th class="text-right">Quantité</th>
+            <th class="hidden sm:table-cell">Motif</th>
+            <th class="hidden md:table-cell">Par</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of movements(); track m.id) {
+            <tr>
+              <td class="whitespace-nowrap">{{ m.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ m.product_name }}</td>
+              <td>
+                <span
+                  class="badge badge-sm"
+                  [class.badge-success]="m.kind === 'IN'"
+                  [class.badge-error]="m.kind === 'OUT'"
+                  [class.badge-info]="m.kind === 'ADJ'"
+                >
+                  {{ kindLabel(m.kind) }}
+                </span>
+              </td>
+              <td class="text-right font-semibold">{{ m.quantity }}</td>
+              <td class="hidden sm:table-cell">{{ m.reason || '—' }}</td>
+              <td class="hidden md:table-cell">{{ m.created_by }}</td>
+            </tr>
+          } @empty {
+            @if (!loading()) {
+              <tr>
+                <td colspan="6" class="py-8 text-center opacity-70">Aucun mouvement.</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (pageCount() > 1) {
+      <div class="mt-4 flex justify-center">
+        <div class="join">
+          <button
+            type="button"
+            class="btn join-item"
+            [disabled]="page() <= 1"
+            (click)="goTo(page() - 1)"
+          >
+            «
+          </button>
+          <button type="button" class="btn join-item pointer-events-none">
+            Page {{ page() }} / {{ pageCount() }}
+          </button>
+          <button
+            type="button"
+            class="btn join-item"
+            [disabled]="page() >= pageCount()"
+            (click)="goTo(page() + 1)"
+          >
+            »
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</div>

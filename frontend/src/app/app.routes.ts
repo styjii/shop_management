@@ -44,6 +44,26 @@ export const routes: Routes = [
         title: 'Caisse',
         loadComponent: () => import('./features/sales/sale-pos/sale-pos').then((m) => m.SalePos),
       },
+      {
+        path: 'sales/history',
+        title: 'Historique des ventes',
+        loadComponent: () =>
+          import('./features/sales/sale-history/sale-history').then((m) => m.SaleHistory),
+      },
+      {
+        path: 'categories',
+        title: 'Catégories',
+        canActivate: [managerGuard],
+        loadComponent: () =>
+          import('./features/categories/categories/categories').then((m) => m.Categories),
+      },
+      {
+        path: 'movements',
+        title: 'Mouvements de stock',
+        canActivate: [managerGuard],
+        loadComponent: () =>
+          import('./features/movements/movements/movements').then((m) => m.Movements),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

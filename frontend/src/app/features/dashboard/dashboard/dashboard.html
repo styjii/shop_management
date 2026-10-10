@@ -20,7 +20,10 @@
   <div class="stat">
     <div class="stat-title">Ventes enregistrées</div>
     <div class="stat-value">{{ salesCount() }}</div>
-    <div class="stat-desc"><a routerLink="/sales" class="link">Nouvelle vente</a></div>
+    <div class="stat-desc">
+      <a routerLink="/sales" class="link">Nouvelle vente</a> ·
+      <a routerLink="/sales/history" class="link">Historique</a>
+    </div>
   </div>
 </div>
 
@@ -47,6 +50,15 @@
               >
                 {{ p.quantity }} / seuil {{ p.low_stock_threshold }}
               </span>
+              @if (auth.isManager()) {
+                <a
+                  [routerLink]="['/movements']"
+                  [queryParams]="{ product: p.id }"
+                  class="btn btn-xs btn-outline"
+                >
+                  Réapprovisionner
+                </a>
+              }
             </li>
           }
         </ul>

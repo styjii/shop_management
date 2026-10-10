@@ -165,6 +165,7 @@ class FrontendContractTests(InventoryAPITestCase):
         response = self.client.get("/api/sales/?page=1")
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["items"][0]["unit_price"], "1.50")
+        self.assertEqual(response.data["results"][0]["items"][0]["product_name"], "Eau")
 
 
 class StockMovementTests(InventoryAPITestCase):

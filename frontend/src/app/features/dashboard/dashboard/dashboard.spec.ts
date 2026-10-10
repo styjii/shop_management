@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { makeProduct, makeSale, page } from '../../../../testing/factories';
+import { AuthService } from '../../../core/auth';
 import { Dashboard } from './dashboard';
 
 describe('Dashboard', () => {
@@ -49,5 +50,19 @@ describe('Dashboard', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Aucune alerte');
     expect(text).toContain('Aucune vente');
+  });
+
+  it('offers a restocking link to managers only', async () => {
+    const { http, fixture } = setup();
+    TestBed.inject(AuthService).user.set({ username: 'chef', is_manager: true });
+    http
+      .expectOne(`${api}/products/low-stock/`)
+      .flush([makeProduct({ quantity: 1, is_low_stock: true })]);
+    http.expectOne((r) => r.url === `${api}/sales/`).flush(page([]));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const link = (fixture.nativeElement as HTMLElement).querySelector('a[href*="/movements"]');
+    expect(link?.textContent).toContain('Réapprovisionner');
+    expect(link?.getAttribute('href')).toContain('product=1');
   });
 });

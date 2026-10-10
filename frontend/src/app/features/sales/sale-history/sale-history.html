@@ -1,0 +1,113 @@
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+  <h1 class="text-2xl font-bold">Historique des ventes</h1>
+  <a routerLink="/sales" class="btn btn-primary btn-sm sm:btn-md">Nouvelle vente</a>
+</div>
+
+@if (error(); as message) {
+  <div role="alert" class="alert alert-error mb-4">
+    <span>{{ message }}</span>
+  </div>
+}
+
+<p class="mb-2 text-sm opacity-70">
+  {{ count() }} vente(s)
+  @if (!auth.isManager()) {
+    · uniquement les vôtres
+  }
+  @if (loading()) {
+    <span class="loading loading-spinner loading-xs ml-2"></span>
+  }
+</p>
+
+<div class="overflow-x-auto rounded-box bg-base-100 shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Vente</th>
+        <th>Date</th>
+        @if (auth.isManager()) {
+          <th class="hidden sm:table-cell">Vendeur</th>
+        }
+        <th class="text-right">Articles</th>
+        <th class="text-right">Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (s of sales(); track s.id) {
+        <tr class="hover cursor-pointer" (click)="toggle(s.id)">
+          <td class="font-medium">n°{{ s.id }}</td>
+          <td class="whitespace-nowrap">{{ s.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
+          @if (auth.isManager()) {
+            <td class="hidden sm:table-cell">{{ s.seller }}</td>
+          }
+          <td class="text-right">{{ itemCount(s) }}</td>
+          <td class="text-right font-semibold">{{ s.total | currency: 'EUR' }}</td>
+          <td class="text-right">
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              [attr.aria-expanded]="expanded() === s.id"
+              (click)="$event.stopPropagation(); toggle(s.id)"
+            >
+              {{ expanded() === s.id ? 'Masquer' : 'Détail' }}
+            </button>
+          </td>
+        </tr>
+        @if (expanded() === s.id) {
+          <tr data-testid="sale-detail">
+            <td [attr.colspan]="auth.isManager() ? 6 : 5" class="bg-base-200">
+              <ul class="list">
+                @for (item of s.items; track item.product) {
+                  <li class="list-row items-center py-1">
+                    <div class="list-col-grow">{{ item.product_name }}</div>
+                    <span class="opacity-70"
+                      >{{ item.quantity }} × {{ item.unit_price | currency: 'EUR' }}</span
+                    >
+                    <span class="w-24 text-right font-medium">
+                      {{ +item.unit_price * item.quantity | currency: 'EUR' }}
+                    </span>
+                  </li>
+                }
+              </ul>
+            </td>
+          </tr>
+        }
+      } @empty {
+        @if (!loading()) {
+          <tr>
+            <td [attr.colspan]="auth.isManager() ? 6 : 5" class="py-8 text-center opacity-70">
+              Aucune vente enregistrée.
+            </td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (pageCount() > 1) {
+  <div class="mt-4 flex justify-center">
+    <div class="join">
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() <= 1"
+        (click)="goTo(page() - 1)"
+      >
+        «
+      </button>
+      <button type="button" class="btn join-item pointer-events-none">
+        Page {{ page() }} / {{ pageCount() }}
+      </button>
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() >= pageCount()"
+        (click)="goTo(page() + 1)"
+      >
+        »
+      </button>
+    </div>
+  </div>
+}

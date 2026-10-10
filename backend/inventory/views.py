@@ -65,7 +65,9 @@ class SaleViewSet(
     serializer_class = SaleSerializer
 
     def get_queryset(self):
-        queryset = Sale.objects.select_related("seller").prefetch_related("items")
+        queryset = Sale.objects.select_related("seller").prefetch_related(
+            "items__product"
+        )
         user = self.request.user
         return queryset if is_manager(user) else queryset.filter(seller=user)
 
