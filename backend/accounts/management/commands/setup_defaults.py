@@ -6,7 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 
-from inventory.permissions import MANAGER_GROUP, SELLER_GROUP
+from accounts.permissions import MANAGER_GROUP, SELLER_GROUP
 
 
 class Command(BaseCommand):

@@ -32,6 +32,7 @@ urlpatterns = [
     path("api/auth/token/", LoginView.as_view(), name="token_obtain"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
+    path("api/", include("accounts.urls")),
     path("api/", include("inventory.urls")),
 ]
 

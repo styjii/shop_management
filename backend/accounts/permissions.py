@@ -5,7 +5,7 @@ MANAGER_GROUP = "Gestionnaire"
 SELLER_GROUP = "Vendeur"
 
 # Individual rights a manager can grant to a seller, on top of the role.
-# (codename -> French label). They are Django permissions declared on Product.
+# (codename -> French label). They are Django permissions declared on accounts.models.Right.
 CAPABILITIES = {
     "manage_catalog": "Gérer le catalogue (produits et catégories)",
     "manage_stock": "Gérer le stock (mouvements)",
@@ -23,7 +23,7 @@ def has_capability(user, capability):
     """Managers have every right; other users need the individual permission."""
     if not user.is_authenticated:
         return False
-    return is_manager(user) or user.has_perm(f"inventory.{capability}")
+    return is_manager(user) or user.has_perm(f"accounts.{capability}")
 
 
 def capabilities_of(user):

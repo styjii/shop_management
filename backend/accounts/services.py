@@ -1,4 +1,4 @@
-"""Account helpers: roles, individual rights, token revocation, password e-mails."""
+"""Account services: roles, individual rights, token revocation, password e-mails."""
 
 import logging
 
@@ -18,7 +18,7 @@ from rest_framework_simplejwt.token_blacklist.models import (
     OutstandingToken,
 )
 
-from .models import Product
+from .models import Right
 from .permissions import CAPABILITIES, MANAGER_GROUP, SELLER_GROUP
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ def explicit_capabilities(user):
 
 
 def set_capabilities(user, capabilities):
-    content_type = ContentType.objects.get_for_model(Product)
+    content_type = ContentType.objects.get_for_model(Right)
     permissions = Permission.objects.filter(
         content_type=content_type, codename__in=list(capabilities)
     )
@@ -114,3 +114,11 @@ def send_password_reset_email_safely(user):
         send_password_reset_email(user)
     except Exception:
         logger.exception("Could not send the password reset e-mail")
+
+
+def status_of(user):
+    if user.is_active:
+        return "active"
+    if user.last_login is None and role_of(user) is None:
+        return "pending"  # registered, never approved
+    return "inactive"

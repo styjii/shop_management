@@ -4,9 +4,11 @@ from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from accounts.permissions import HasCapability, HasCapabilityOrReadOnly, has_capability
+
 from .filters import ProductFilter
 from .models import Category, Product, Sale, StockMovement
-from .permissions import HasCapability, HasCapabilityOrReadOnly, has_capability
+
 from .serializers import (
     CategorySerializer,
     ProductSerializer,

@@ -1,34 +1,84 @@
 from django.contrib.auth.models import User
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import transaction
-from django.db.models import ProtectedError, Q
-from django_filters import rest_framework as django_filters
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, serializers, status, viewsets
-from rest_framework.decorators import action
+from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.response import Response
 
-from .accounts import (
+from .permissions import CAPABILITIES
+from .services import (
     check_password_rules,
     count_active_managers,
     email_in_use,
     explicit_capabilities,
-    revoke_user_tokens,
     role_of,
     set_capabilities,
     set_role,
+    status_of,
 )
-from .permissions import CAPABILITIES, MANAGER_GROUP, SELLER_GROUP, IsManager
 
 PROTECTED_MESSAGE = "Ce compte est protégé : il se gère depuis l'administration (/admin/)."
 
 
-def status_of(user):
-    if user.is_active:
-        return "active"
-    if user.last_login is None and role_of(user) is None:
-        return "pending"  # registered, never approved
-    return "inactive"
+class ProfileSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+
+    def validate_email(self, value):
+        if email_in_use(value, exclude=self.context["request"].user):
+            raise serializers.ValidationError("Cette adresse e-mail est déjà utilisée.")
+        return value
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        if not user.check_password(attrs["old_password"]):
+            raise serializers.ValidationError(
+                {"old_password": ["Le mot de passe actuel est incorrect."]}
+            )
+        if attrs["old_password"] == attrs["new_password"]:
+            raise serializers.ValidationError(
+                {"new_password": ["Le nouveau mot de passe doit être différent de l'ancien."]}
+            )
+        check_password_rules(attrs["new_password"], user, field="new_password")
+        return attrs
+
+
+class RegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150, validators=[UnicodeUsernameValidator()])
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("Ce nom d'utilisateur est déjà pris.")
+        return value
+
+    def validate_email(self, value):
+        if email_in_use(value):
+            raise serializers.ValidationError("Cette adresse e-mail est déjà utilisée.")
+        return value
+
+    def validate(self, attrs):
+        candidate = User(username=attrs["username"], email=attrs["email"])
+        check_password_rules(attrs["password"], candidate)
+        return attrs
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -145,87 +195,5 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserFilter(django_filters.FilterSet):
-    status = django_filters.ChoiceFilter(
-        choices=[("pending", "En attente"), ("active", "Actif"), ("inactive", "Désactivé")],
-        method="filter_status",
-    )
-    role = django_filters.ChoiceFilter(
-        choices=[("manager", "Gestionnaire"), ("seller", "Vendeur")],
-        method="filter_role",
-    )
-
-    class Meta:
-        model = User
-        fields = ["status", "role"]
-
-    def filter_status(self, queryset, name, value):
-        pending = Q(is_active=False, last_login__isnull=True, groups__isnull=True, is_staff=False)
-        if value == "active":
-            return queryset.filter(is_active=True)
-        if value == "pending":
-            return queryset.filter(pending).distinct()
-        return queryset.filter(is_active=False).exclude(pk__in=queryset.filter(pending)).distinct()
-
-    def filter_role(self, queryset, name, value):
-        managers = Q(is_staff=True) | Q(groups__name=MANAGER_GROUP)
-        if value == "manager":
-            return queryset.filter(managers).distinct()
-        return queryset.filter(groups__name=SELLER_GROUP).exclude(
-            pk__in=queryset.filter(managers)
-        ).distinct()
-
-
 class SetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True)
-
-
-class UserViewSet(viewsets.ModelViewSet):
-    """User management, reserved to managers."""
-
-    serializer_class = UserSerializer
-    permission_classes = [IsManager]
-    queryset = User.objects.prefetch_related("groups", "user_permissions").order_by("username")
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = UserFilter
-    search_fields = ["username", "email", "first_name", "last_name"]
-    ordering_fields = ["username", "date_joined", "last_login"]
-
-    def destroy(self, request, *args, **kwargs):
-        user = self.get_object()
-        if user.is_superuser:
-            raise PermissionDenied(PROTECTED_MESSAGE)
-        if user.pk == request.user.pk:
-            return Response(
-                {"detail": "Vous ne pouvez pas supprimer votre propre compte."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if user.is_active and role_of(user) == "manager" and count_active_managers(exclude=user) == 0:
-            return Response(
-                {"detail": "Il doit rester au moins un gestionnaire actif."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        try:
-            return super().destroy(request, *args, **kwargs)
-        except ProtectedError:
-            return Response(
-                {
-                    "detail": "Suppression impossible : ce compte a des ventes ou des mouvements "
-                    "de stock. Désactivez-le plutôt."
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-    @action(detail=True, methods=["post"], url_path="set-password")
-    def set_password(self, request, pk=None):
-        user = self.get_object()
-        if user.is_superuser:
-            raise PermissionDenied(PROTECTED_MESSAGE)
-        serializer = SetPasswordSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        password = serializer.validated_data["new_password"]
-        check_password_rules(password, user, field="new_password")
-        user.set_password(password)
-        user.save()
-        revoke_user_tokens(user)
-        return Response({"detail": "Mot de passe modifié."})

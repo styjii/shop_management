@@ -1,19 +1,16 @@
-import os
 import tempfile
-from io import BytesIO, StringIO
-from unittest import mock
+from io import BytesIO
 
 from django.contrib.auth.models import Group, User
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
-from django.core.management.base import CommandError
 from django.test import override_settings
 from PIL import Image
 from rest_framework.test import APITestCase
 
+from accounts.permissions import MANAGER_GROUP, SELLER_GROUP
+
 from .models import Category, Product, StockMovement
-from .permissions import MANAGER_GROUP, SELLER_GROUP
 
 
 class InventoryAPITestCase(APITestCase):
@@ -204,53 +201,3 @@ class StockMovementTests(InventoryAPITestCase):
     def test_seller_cannot_use_movements(self):
         self.client.force_authenticate(self.seller)
         self.assertEqual(self.client.get("/api/movements/").status_code, 403)
-
-
-class AuthTests(InventoryAPITestCase):
-    def test_login_refresh_and_logout(self):
-        login = self.client.post("/api/auth/token/", {
-            "username": "seller", "password": "Test-1234567"}, format="json")
-        self.assertEqual(login.status_code, 200)
-        refresh = login.data["refresh"]
-        self.assertEqual(self.client.post(
-            "/api/auth/logout/", {"refresh": refresh}, format="json").status_code, 200)
-        self.assertEqual(self.client.post(
-            "/api/auth/refresh/", {"refresh": refresh}, format="json").status_code, 401)
-
-    def test_me_reports_role(self):
-        self.client.force_authenticate(self.manager)
-        self.assertTrue(self.client.get("/api/auth/me/").data["is_manager"])
-
-    def test_auth_errors_are_in_french(self):
-        bad_login = self.client.post("/api/auth/token/", {
-            "username": "seller", "password": "wrong"}, format="json")
-        self.assertEqual(bad_login.status_code, 401)
-        self.assertEqual(bad_login.data["detail"], "Identifiant ou mot de passe incorrect.")
-        bad_token = self.client.get("/api/products/", headers={"Authorization": "Bearer abc"})
-        self.assertEqual(bad_token.status_code, 401)
-        self.assertEqual(bad_token.data["detail"], "Jeton invalide ou expiré.")
-
-
-class SetupDefaultsTests(APITestCase):
-    def run_command(self, *args):
-        out = StringIO()
-        call_command("setup_defaults", *args, stdout=out)
-        return out.getvalue()
-
-    def test_creates_groups_and_admin_once(self):
-        output = self.run_command()
-        admin = User.objects.get(username="admin")
-        self.assertTrue(admin.is_superuser)
-        self.assertTrue(admin.groups.filter(name=MANAGER_GROUP).exists())
-        self.assertTrue(Group.objects.filter(name=SELLER_GROUP).exists())
-        self.assertIn("Mot de passe généré", output)
-
-        second = self.run_command()
-        self.assertEqual(User.objects.filter(is_superuser=True).count(), 1)
-        self.assertIn("existe déjà", second)
-
-    def test_weak_password_from_environment_is_refused(self):
-        weak = {"DJANGO_DEFAULT_ADMIN_PASSWORD": "123"}
-        with mock.patch.dict(os.environ, weak), self.assertRaises(CommandError):
-            self.run_command()
-        self.assertFalse(User.objects.exists())

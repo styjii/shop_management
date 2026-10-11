@@ -116,20 +116,25 @@ shop_management/
 │   │   ├── asgi.py
 │   │   ├── exceptions.py          # messages d'erreur JWT en français
 │   │   ├── settings.py
-│   │   ├── urls.py                # routes + authentification JWT
+│   │   ├── urls.py                # routes + connexion JWT
 │   │   └── wsgi.py
-│   ├── inventory/                 # application métier
+│   ├── accounts/                  # comptes, rôles et droits
 │   │   ├── management/commands/
 │   │   │   └── setup_defaults.py  # groupes + compte admin par défaut
 │   │   ├── migrations/
-│   │   ├── accounts.py            # rôles, droits individuels, jetons, e-mails
+│   │   ├── filters.py             # filtres des utilisateurs (statut, rôle)
+│   │   ├── models.py              # Right : porte les droits individuels (sans table)
+│   │   ├── permissions.py         # rôles, droits individuels, classes de permission DRF
+│   │   ├── serializers.py         # profil, mot de passe, inscription, utilisateurs
+│   │   ├── services.py            # rôles, jetons, e-mails de réinitialisation
+│   │   ├── urls.py                # /api/auth/... et /api/users/
+│   │   ├── views.py
+│   │   └── test_*.py
+│   ├── inventory/                 # application métier (stock)
+│   │   ├── migrations/
 │   │   ├── admin.py               # administration en français
-│   │   ├── auth_views.py          # profil, mot de passe, inscription, réinitialisation
-│   │   ├── user_views.py          # gestion des utilisateurs
-│   │   ├── apps.py
 │   │   ├── filters.py             # recherche et filtres produits
 │   │   ├── models.py              # Category, Product, StockMovement, Sale, SaleItem
-│   │   ├── permissions.py         # rôles Gestionnaire / Vendeur
 │   │   ├── serializers.py
 │   │   ├── services.py            # règles métier du stock
 │   │   ├── tests.py
@@ -240,7 +245,7 @@ python -c "from django.core.management.utils import get_random_secret_key as g; 
 
 ### Premier lancement
 
-Après une mise à jour qui change les modèles, appliquez les migrations : `python manage.py makemigrations` puis `migrate` (les droits individuels ajoutent la migration `0002`).
+Après une mise à jour qui change les modèles, appliquez les migrations : `python manage.py makemigrations` puis `migrate`. L'app `accounts` ajoute sa migration `0001` (le modèle `Right` n'a pas de table : il ne sert qu'à porter les droits individuels).
 
 ```bash
 cd backend
@@ -331,6 +336,15 @@ curl -X POST http://localhost:8000/api/sales/ \
   -d '{"items": [{"product": 1, "quantity": 2}]}'
 ```
 
+### Organisation du backend
+
+Deux apps Django séparent les responsabilités :
+
+- **`accounts`** : tout ce qui concerne les personnes (connexion, profil, inscription, mot de passe, utilisateurs, rôles et droits) et la commande `setup_defaults`. Elle ne dépend pas de `inventory`.
+- **`inventory`** : le stock (catégories, produits, mouvements, ventes). Elle utilise les droits définis par `accounts` (`accounts.permissions`).
+
+Les adresses de l'API ne changent pas (`/api/auth/...`, `/api/users/`, `/api/products/`...).
+
 ### Rôles et droits
 
 | | Vendeur | Vendeur avec droits | Gestionnaire |
@@ -354,7 +368,7 @@ Mouvements de stock : `IN` (entrée, ajoute), `OUT` (sortie, retire et refuse si
 ## Tests et qualité du code
 
 ```bash
-# Backend (ventes, stock, permissions, filtres, authentification, setup_defaults)
+# Backend (comptes et droits, ventes, stock, filtres, authentification, setup_defaults)
 cd backend && python manage.py test
 
 # Lint et typage (depuis la racine)
