@@ -178,3 +178,16 @@ class ProfileTests(AccountsTestCase):
         self.seller.refresh_from_db()
         self.assertEqual(self.seller.username, "vendeur")
         self.assertFalse(self.seller.is_staff)
+
+
+class LastLoginTests(AccountsTestCase):
+    def test_login_records_last_login(self):
+        self.assertIsNone(self.seller.last_login)
+        self.assertEqual(self.login("vendeur").status_code, 200)
+        self.seller.refresh_from_db()
+        self.assertIsNotNone(self.seller.last_login)
+
+    def test_failed_login_does_not_record_last_login(self):
+        self.login("vendeur", "mauvais-mot-de-passe")
+        self.seller.refresh_from_db()
+        self.assertIsNone(self.seller.last_login)
