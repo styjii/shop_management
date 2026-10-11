@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { filter, switchMap, take } from 'rxjs';
@@ -13,6 +13,7 @@ import { extractError } from '../../../core/errors';
 @Component({
   selector: 'app-dashboard',
   imports: [RouterLink, CurrencyPipe, DatePipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './dashboard.html',
 })
 export class Dashboard {

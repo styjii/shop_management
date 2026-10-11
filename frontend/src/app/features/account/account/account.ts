@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/auth';
 import { extractError, fieldErrors } from '../../../core/errors';
@@ -9,6 +9,7 @@ import { CAPABILITIES } from '../../../models/inventory';
 @Component({
   selector: 'app-account',
   imports: [ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './account.html',
 })
 export class Account {

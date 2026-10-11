@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -13,6 +13,7 @@ import { ProductService } from '../../../services/product';
 @Component({
   selector: 'app-movements',
   imports: [ReactiveFormsModule, DatePipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './movements.html',
 })
 export class Movements {

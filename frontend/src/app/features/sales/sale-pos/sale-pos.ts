@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { catchError, debounceTime, distinctUntilChanged, of, switchMap, tap } from 'rxjs';
@@ -17,6 +17,7 @@ export interface CartLine {
 @Component({
   selector: 'app-sale-pos',
   imports: [ReactiveFormsModule, CurrencyPipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './sale-pos.html',
 })
 export class SalePos {

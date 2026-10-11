@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, of, switchMap, tap } from 'rxjs';
@@ -11,6 +11,7 @@ import { SaleService } from '../../../services/sale';
 @Component({
   selector: 'app-sale-history',
   imports: [CurrencyPipe, DatePipe, RouterLink],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './sale-history.html',
 })
 export class SaleHistory {

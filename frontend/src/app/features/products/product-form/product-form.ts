@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { extractError, fieldErrors } from '../../../core/errors';
@@ -10,6 +10,7 @@ import { ProductService } from '../../../services/product';
 @Component({
   selector: 'app-product-form',
   imports: [ReactiveFormsModule, RouterLink],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './product-form.html',
 })
 export class ProductForm {

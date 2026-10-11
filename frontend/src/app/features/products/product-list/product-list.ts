@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -14,6 +14,7 @@ import { ProductFilters, ProductService } from '../../../services/product';
 @Component({
   selector: 'app-product-list',
   imports: [ReactiveFormsModule, RouterLink, CurrencyPipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './product-list.html',
 })
 export class ProductList {

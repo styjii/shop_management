@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { extractError, fieldErrors } from '../../../core/errors';
 import { ToastService } from '../../../core/toast';
@@ -8,6 +8,7 @@ import { CategoryService } from '../../../services/category';
 @Component({
   selector: 'app-categories',
   imports: [ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './categories.html',
 })
 export class Categories {

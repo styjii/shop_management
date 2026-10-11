@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, debounceTime, of, switchMap, tap } from 'rxjs';
@@ -26,6 +26,7 @@ const STATUS_LABELS: Record<UserStatus, string> = {
 @Component({
   selector: 'app-users',
   imports: [ReactiveFormsModule, DatePipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './users.html',
 })
 export class Users {
