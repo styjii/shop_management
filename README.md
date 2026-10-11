@@ -105,7 +105,7 @@ Les dépendances sont réparties en trois fichiers dans `requirements/`.
 
 ### Outils
 
-`git`, `pip` + `venv`, `npm` + Angular CLI, `curl`, HTTPie, **Ruff** (lint) et **Pyright** (typage), configurés par `ruff.toml` et `pyrightconfig.json`. Développement possible sur mobile avec Termux.
+`git`, `pip` + `venv`, `npm` + Angular CLI, `curl`, HTTPie, **Ruff** (lint) et **Pyright** (typage), configurés par `backend/ruff.toml` et `pyrightconfig.json`. Développement possible sur mobile avec Termux.
 
 ## Structure du projet
 
@@ -142,7 +142,8 @@ shop_management/
 │   │   ├── validators.py
 │   │   └── views.py
 │   ├── .gitignore
-│   └── manage.py
+│   ├── manage.py
+│   └── ruff.toml                  # configuration de Ruff (lint)
 ├── frontend/                      # Angular + Tailwind + daisyUI
 │   ├── public/
 │   │   └── favicon.ico
@@ -185,7 +186,6 @@ shop_management/
 ├── .gitignore
 ├── LICENSE
 ├── pyrightconfig.json
-├── ruff.toml
 └── README.md
 ```
 
@@ -384,7 +384,7 @@ cd frontend && npx prettier --check "src/**/*.{ts,html,css}"
 
 Le workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) s'exécute à chaque `push` sur `main` et à chaque Pull Request :
 
-- **Backend** (Python 3.12 et 3.13) : Ruff, Pyright, vérification des migrations, tests Django.
+- **Backend** (Python 3.12 et 3.13) : Pyright, vérification des migrations, tests Django.
 - **Frontend** : Prettier, `ng build`, puis `ng test` (Vitest + jsdom, sans navigateur).
 - **Audit** des dépendances (`pip-audit`, `npm audit`), à titre informatif.
 

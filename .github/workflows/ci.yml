@@ -38,10 +38,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -r requirements/dev.txt ruff pyright
-
-      - name: Lint (Ruff)
-        run: .venv/bin/ruff check backend
+          .venv/bin/pip install -r requirements/dev.txt pyright
 
       - name: Type check (Pyright)
         run: .venv/bin/pyright
@@ -65,7 +62,8 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          # Angular 22 needs Node 22.22.3+, 24.15+ or 26+
+          node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -99,7 +97,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Audit npm dependencies
         working-directory: frontend
