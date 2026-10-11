@@ -52,6 +52,12 @@ class Product(models.Model):
         verbose_name = "produit"
         verbose_name_plural = "produits"
         ordering = ["name"]
+        # Individual rights that a manager can grant to a seller (see permissions.py).
+        permissions = [
+            ("manage_catalog", "Peut gérer le catalogue (produits et catégories)"),
+            ("manage_stock", "Peut gérer le stock (mouvements)"),
+            ("view_all_sales", "Peut voir toutes les ventes"),
+        ]
 
     @property
     def is_low_stock(self):

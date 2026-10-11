@@ -6,6 +6,7 @@ Docs: https://docs.djangoproject.com/en/6.1/topics/settings/
 """
 
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -117,6 +118,9 @@ REST_FRAMEWORK = {
         "anon": "30/min",
         "user": "300/min",
         "login": "5/min",
+        "register": "5/hour",
+        "password-reset": "5/hour",
+        "password-reset-confirm": "10/hour",
     },
 }
 
@@ -128,6 +132,33 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = get_env_list("CORS_ALLOWED_ORIGINS", "http://localhost:4200")
+
+# ---------------------------------------------------------------------------
+# Accounts: registration, password reset e-mails
+# ---------------------------------------------------------------------------
+
+# Anyone can request an account, but it stays inactive until a manager approves it.
+REGISTRATION_ENABLED = get_env("REGISTRATION_ENABLED", "1") == "1"
+
+# Base URL of the Angular app, used in the links of the password reset e-mails.
+FRONTEND_URL = get_env("FRONTEND_URL", "http://localhost:4200").rstrip("/")
+
+# Password reset links are valid for one hour (Django's default is three days).
+PASSWORD_RESET_TIMEOUT = 3600
+
+# In development the e-mails are printed in the terminal; in production use SMTP.
+EMAIL_BACKEND = get_env(
+    "DJANGO_EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = get_env("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(get_env("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = get_env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = get_env("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = get_env("EMAIL_USE_TLS", "1") == "1"
+DEFAULT_FROM_EMAIL = get_env("DEFAULT_FROM_EMAIL", "Shop Management <no-reply@localhost>")
 
 # ---------------------------------------------------------------------------
 # Passwords
@@ -180,3 +211,11 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+if "test" in sys.argv:
+    # A fast hasher makes the test suite several times quicker.
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

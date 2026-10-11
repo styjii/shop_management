@@ -1,12 +1,12 @@
 from django.db.models import F, ProtectedError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .filters import ProductFilter
 from .models import Category, Product, Sale, StockMovement
-from .permissions import IsManager, IsManagerOrReadOnly, is_manager
+from .permissions import HasCapability, HasCapabilityOrReadOnly, has_capability
 from .serializers import (
     CategorySerializer,
     ProductSerializer,
@@ -31,14 +31,16 @@ class ProtectedDeleteMixin(mixins.DestroyModelMixin):
 class CategoryViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsManagerOrReadOnly]
+    permission_classes = [HasCapabilityOrReadOnly]
+    required_capability = "manage_catalog"
     pagination_class = None  # a short list, used as a whole by the frontend selects
 
 
 class ProductViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
     queryset = Product.objects.select_related("category")
     serializer_class = ProductSerializer
-    permission_classes = [IsManagerOrReadOnly]
+    permission_classes = [HasCapabilityOrReadOnly]
+    required_capability = "manage_catalog"
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -69,7 +71,9 @@ class SaleViewSet(
             "items__product"
         )
         user = self.request.user
-        return queryset if is_manager(user) else queryset.filter(seller=user)
+        return (
+            queryset if has_capability(user, "view_all_sales") else queryset.filter(seller=user)
+        )
 
 
 class StockMovementViewSet(
@@ -79,16 +83,10 @@ class StockMovementViewSet(
 ):
     queryset = StockMovement.objects.select_related("product", "created_by")
     serializer_class = StockMovementSerializer
-    permission_classes = [IsManager]
+    permission_classes = [HasCapability]
+    required_capability = "manage_stock"
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["product", "kind"]
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
-
-
-@api_view(["GET"])
-def current_user(request):
-    return Response(
-        {"username": request.user.username, "is_manager": is_manager(request.user)}
-    )

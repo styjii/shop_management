@@ -4,6 +4,7 @@ from io import BytesIO, StringIO
 from unittest import mock
 
 from django.contrib.auth.models import Group, User
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -16,6 +17,10 @@ from .permissions import MANAGER_GROUP, SELLER_GROUP
 
 
 class InventoryAPITestCase(APITestCase):
+    def setUp(self):
+        super().setUp()
+        cache.clear()  # the throttling counters live in the cache
+
     @classmethod
     def setUpTestData(cls):
         manager_group = Group.objects.create(name=MANAGER_GROUP)
@@ -37,6 +42,7 @@ class InventoryAPITestCase(APITestCase):
 
 class SaleTests(InventoryAPITestCase):
     def setUp(self):
+        super().setUp()
         self.client.force_authenticate(self.seller)
 
     def sell(self, *lines):
@@ -170,6 +176,7 @@ class FrontendContractTests(InventoryAPITestCase):
 
 class StockMovementTests(InventoryAPITestCase):
     def setUp(self):
+        super().setUp()
         self.client.force_authenticate(self.manager)
 
     def move(self, kind, quantity):

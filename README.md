@@ -44,7 +44,10 @@ Convention du projet : le **code reste en anglais**, les **sorties** (administra
 ## Fonctionnalités
 
 - Authentification par jetons **JWT** (access + refresh, rotation et liste noire), avec messages d'erreur en français.
-- Rôles **Gestionnaire** et **Vendeur** (groupes Django) : un vendeur ne voit que ses propres ventes.
+- Rôles **Gestionnaire** et **Vendeur** (groupes Django) et **droits individuels** que le gestionnaire accorde à un vendeur : gérer le catalogue, gérer le stock, voir toutes les ventes.
+- **Gestion des utilisateurs** par les gestionnaires : création, modification, rôle et droits, désactivation, mot de passe temporaire, suppression.
+- **Inscription libre** : chacun peut demander un compte, qui reste inactif jusqu'à l'approbation d'un gestionnaire.
+- **Mot de passe oublié** par e-mail (lien valable 1 heure, à usage unique) et **changement de mot de passe** (ferme toutes les sessions).
 - CRUD des **produits** et des **catégories** (SKU unique, prix, quantité, image de 2 Mo maximum).
 - **Recherche et filtres** : recherche par nom ou SKU, filtres par catégorie, prix et « stock bas », tri et pagination.
 - **Alertes** de stock bas, avec seuil configurable par produit.
@@ -119,7 +122,10 @@ shop_management/
 │   │   ├── management/commands/
 │   │   │   └── setup_defaults.py  # groupes + compte admin par défaut
 │   │   ├── migrations/
+│   │   ├── accounts.py            # rôles, droits individuels, jetons, e-mails
 │   │   ├── admin.py               # administration en français
+│   │   ├── auth_views.py          # profil, mot de passe, inscription, réinitialisation
+│   │   ├── user_views.py          # gestion des utilisateurs
 │   │   ├── apps.py
 │   │   ├── filters.py             # recherche et filtres produits
 │   │   ├── models.py              # Category, Product, StockMovement, Sale, SaleItem
@@ -139,7 +145,9 @@ shop_management/
 │   │   ├── app/
 │   │   │   ├── core/              # auth, intercepteur JWT, gardes, erreurs, toasts
 │   │   │   ├── features/
-│   │   │   │   ├── auth/login/
+│   │   │   │   ├── auth/login/, register/, forgot-password/, reset-password/
+│   │   │   │   ├── account/account/
+│   │   │   │   ├── users/users/
 │   │   │   │   ├── dashboard/dashboard/
 │   │   │   │   ├── products/product-list/
 │   │   │   │   ├── products/product-form/
@@ -216,6 +224,11 @@ set -a; source .env; set +a
 | `CORS_ALLOWED_ORIGINS` | Origines autorisées pour le frontend | `http://localhost:4200` |
 | `DJANGO_DEFAULT_ADMIN_USERNAME` | Nom du compte admin par défaut | `admin` |
 | `DJANGO_DEFAULT_ADMIN_PASSWORD` | Mot de passe du compte admin (vide : généré aléatoirement) | *(optionnel)* |
+| `REGISTRATION_ENABLED` | `1` : inscription libre (comptes à approuver), `0` : désactivée | `1` |
+| `FRONTEND_URL` | Adresse d'Angular, utilisée dans les liens des e-mails | `http://localhost:4200` |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | Serveur SMTP (production) | `smtp.example.com`, `587` |
+| `DEFAULT_FROM_EMAIL` | Expéditeur des e-mails | `Shop Management <no-reply@example.com>` |
+| `DJANGO_EMAIL_BACKEND` | Pour forcer un autre moteur d'e-mails (par défaut : console en développement, SMTP sinon) | *(optionnel)* |
 
 Générer une clé secrète :
 
@@ -226,6 +239,8 @@ python -c "from django.core.management.utils import get_random_secret_key as g; 
 ## Utilisation
 
 ### Premier lancement
+
+Après une mise à jour qui change les modèles, appliquez les migrations : `python manage.py makemigrations` puis `migrate` (les droits individuels ajoutent la migration `0002`).
 
 ```bash
 cd backend
@@ -271,9 +286,12 @@ puis ajoutez l'adresse IP à `DJANGO_ALLOWED_HOSTS` et `http://<ip>:4200` à `CO
 | Liste des produits (recherche, filtres, tri) | `/products` | Tous les utilisateurs |
 | Caisse | `/sales` | Tous les utilisateurs |
 | Historique des ventes (détail par vente) | `/sales/history` | Tous (un vendeur ne voit que les siennes) |
-| Création et modification de produit | `/products/new`, `/products/:id/edit` | Gestionnaire |
-| Catégories (ajout, modification, suppression) | `/categories` | Gestionnaire |
-| Mouvements de stock (entrée, sortie, ajustement) | `/movements` | Gestionnaire |
+| Création et modification de produit | `/products/new`, `/products/:id/edit` | Droit « catalogue » |
+| Catégories (ajout, modification, suppression) | `/categories` | Droit « catalogue » |
+| Mouvements de stock (entrée, sortie, ajustement) | `/movements` | Droit « stock » |
+| Utilisateurs (création, approbation, rôles et droits) | `/users` | Gestionnaire |
+| Mon compte (profil, droits, mot de passe) | `/account` | Tous les utilisateurs |
+| Créer un compte, mot de passe oublié, nouveau mot de passe | `/register`, `/forgot-password`, `/reset-password` | Public |
 
 Depuis le tableau de bord ou la liste des produits, le lien « Réapprovisionner » / « Stock » ouvre `/movements?product=<id>` pour le produit concerné.
 
@@ -284,16 +302,23 @@ Depuis le tableau de bord ou la liste des produits, le lien « Réapprovisionner
 | POST | `/api/auth/token/` | Connexion (access + refresh), 5 essais par minute | Public (limité) |
 | POST | `/api/auth/refresh/` | Nouveau jeton access | Refresh valide |
 | POST | `/api/auth/logout/` | Invalide le refresh | Refresh valide |
-| GET | `/api/auth/me/` | Nom et rôle de l'utilisateur connecté | Connecté |
+| GET / PATCH | `/api/auth/me/` | Profil, rôle et droits ; modification de l'e-mail et du nom | Connecté |
+| POST | `/api/auth/change-password/` | Changer son mot de passe (ferme toutes les sessions) | Connecté |
+| POST | `/api/auth/register/` | Demande de compte (inactif jusqu'à approbation), 5 par heure | Public (limité) |
+| POST | `/api/auth/password-reset/` | Envoie le lien de réinitialisation (réponse identique si l'adresse est inconnue) | Public (limité) |
+| POST | `/api/auth/password-reset/confirm/` | Choisit un nouveau mot de passe avec `uid` et `token` | Public (limité) |
+| GET / POST | `/api/users/` | Lister (filtres `status`, `role`, `search`) / créer un utilisateur | Gestionnaire |
+| GET / PATCH / DELETE | `/api/users/<id>/` | Détail, modification (rôle, droits, activation), suppression | Gestionnaire |
+| POST | `/api/users/<id>/set-password/` | Définir un mot de passe temporaire | Gestionnaire |
 | GET | `/api/products/` | Liste filtrée et paginée | Connecté |
 | GET | `/api/products/low-stock/` | Produits sous le seuil | Connecté |
-| POST | `/api/products/` | Créer un produit | Gestionnaire |
-| PUT / PATCH / DELETE | `/api/products/<id>/` | Modifier / supprimer un produit | Gestionnaire |
+| POST | `/api/products/` | Créer un produit | Droit « catalogue » |
+| PUT / PATCH / DELETE | `/api/products/<id>/` | Modifier / supprimer un produit | Droit « catalogue » |
 | GET | `/api/categories/` | Liste des catégories (sans pagination) | Connecté |
-| POST / PUT / PATCH / DELETE | `/api/categories/` | Gestion des catégories | Gestionnaire |
+| POST / PUT / PATCH / DELETE | `/api/categories/` | Gestion des catégories | Droit « catalogue » |
 | POST | `/api/sales/` | Enregistrer une vente | Connecté |
-| GET | `/api/sales/` | Lister les ventes (les siennes ou toutes) | Connecté |
-| GET / POST | `/api/movements/` | Historique et mouvements de stock | Gestionnaire |
+| GET | `/api/sales/` | Lister les ventes (les siennes, ou toutes avec le droit « toutes les ventes ») | Connecté |
+| GET / POST | `/api/movements/` | Historique et mouvements de stock | Droit « stock » |
 
 Paramètres de filtrage des produits : `search`, `category`, `min_price`, `max_price`, `low_stock`, `is_active`, `ordering`, `page`.
 
@@ -305,6 +330,24 @@ curl -X POST http://localhost:8000/api/sales/ \
   -H "Content-Type: application/json" \
   -d '{"items": [{"product": 1, "quantity": 2}]}'
 ```
+
+### Rôles et droits
+
+| | Vendeur | Vendeur avec droits | Gestionnaire |
+|---|---|---|---|
+| Voir produits, tableau de bord, ses ventes ; vendre | oui | oui | oui |
+| Gérer le catalogue (produits, catégories) | non | si « Gérer le catalogue » | oui |
+| Gérer le stock (mouvements) | non | si « Gérer le stock » | oui |
+| Voir toutes les ventes | non | si « Voir toutes les ventes » | oui |
+| Gérer les utilisateurs | non | non (jamais délégable) | oui |
+
+Règles de sécurité des comptes :
+- une inscription crée un compte **inactif et sans rôle** : il ne peut rien faire avant l'approbation d'un gestionnaire ;
+- un gestionnaire ne peut ni se désactiver, ni changer son propre rôle, ni supprimer son compte, et le **dernier gestionnaire actif** ne peut pas être retiré ;
+- les **superutilisateurs** (le compte de `setup_defaults`) sont protégés : ils se gèrent uniquement depuis `/admin/` ;
+- un compte qui a des ventes ou des mouvements ne peut pas être supprimé (409) : on le **désactive** ;
+- changer ou réinitialiser un mot de passe **ferme toutes les sessions** du compte (jetons de rafraîchissement mis sur liste noire ; le jeton d'accès, court, expire seul) ;
+- les liens de réinitialisation sont à usage unique et valables 1 heure ; la demande répond toujours la même chose, qu'une adresse existe ou non.
 
 Mouvements de stock : `IN` (entrée, ajoute), `OUT` (sortie, retire et refuse si le stock est insuffisant), `ADJ` (ajustement : la quantité devient celle de l'inventaire).
 
@@ -362,6 +405,7 @@ cd frontend && npm audit
 - [x] Interface Angular (connexion, tableau filtrable, formulaires, caisse)
 - [x] Tableau de bord des alertes
 - [x] Interface des mouvements de stock, historique des ventes et catégories
+- [x] Gestion des utilisateurs, droits individuels, inscription et mot de passe oublié
 - [ ] Déploiement (PostgreSQL, Gunicorn, Nginx)
 
 ## Contribuer
