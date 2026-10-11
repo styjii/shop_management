@@ -4,4 +4,5 @@ django-stubs-ext==6.1.2
 djangorestframework-stubs==3.18.1
 types-PyYAML==6.0.12.20260906
 typing_extensions==4.16.0
-pip-audit
+pip-audit==2.10.1
+ruff==0.17.0

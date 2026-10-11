@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from .validators import validate_image_size
+from .validators import validate_image_extension, validate_image_size
 
 
 class Category(models.Model):
@@ -42,7 +42,7 @@ class Product(models.Model):
         upload_to="products/",
         blank=True,
         null=True,
-        validators=[validate_image_size],
+        validators=[validate_image_size, validate_image_extension],
     )
     is_active = models.BooleanField("en vente", default=True)
     created_at = models.DateTimeField("créé le", auto_now_add=True)

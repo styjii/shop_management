@@ -8,7 +8,6 @@ from accounts.permissions import HasCapability, HasCapabilityOrReadOnly, has_cap
 
 from .filters import ProductFilter
 from .models import Category, Product, Sale, StockMovement
-
 from .serializers import (
     CategorySerializer,
     ProductSerializer,

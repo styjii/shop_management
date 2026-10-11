@@ -40,6 +40,9 @@ jobs:
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install -r requirements/dev.txt pyright
 
+      - name: Lint (Ruff)
+        run: .venv/bin/ruff check backend
+
       - name: Type check (Pyright)
         run: .venv/bin/pyright
 
@@ -50,6 +53,15 @@ jobs:
       - name: Run tests
         working-directory: backend
         run: ../.venv/bin/python manage.py test
+
+      - name: Production settings audit
+        working-directory: backend
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: ci-only-Zq7!-Zq7!-Zq7!-Zq7!-Zq7!-Zq7!-Zq7!-Zq7!-0123456789
+          DJANGO_ALLOWED_HOSTS: shop.example.com
+          TRUST_PROXY_SSL: "1"
+        run: ../.venv/bin/python manage.py check --deploy --fail-level WARNING
 
   frontend:
     name: Frontend (Angular)
@@ -93,7 +105,7 @@ jobs:
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
-          pip-audit -r requirements/base.txt
+          pip-audit -r requirements/prod.txt
 
       - uses: actions/setup-node@v7
         with:

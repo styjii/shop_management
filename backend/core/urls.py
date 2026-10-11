@@ -1,5 +1,7 @@
 """URL configuration for the shop_management backend."""
 
+import os
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -11,6 +13,9 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+
+# The admin URL can be moved (ADMIN_URL=gestion-xyz/) to avoid automated scans of /admin/.
+ADMIN_URL = os.environ.get("ADMIN_URL", "admin/").strip("/") + "/"
 
 
 class LoginSerializer(TokenObtainPairSerializer):
@@ -28,7 +33,7 @@ class LoginView(TokenObtainPairView):
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(ADMIN_URL, admin.site.urls),
     path("api/auth/token/", LoginView.as_view(), name="token_obtain"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),

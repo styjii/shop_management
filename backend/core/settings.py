@@ -39,6 +39,16 @@ SECRET_KEY = get_env("DJANGO_SECRET_KEY")
 DEBUG = get_env("DJANGO_DEBUG", "0") == "1"
 ALLOWED_HOSTS = get_env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
+if not DEBUG:
+    # Refuse to start in production with a weak, default or placeholder secret key.
+    if len(SECRET_KEY) < 50 or SECRET_KEY.startswith(("change-me", "django-insecure")):
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY est trop faible pour la production (50 caractères minimum, "
+            "valeur aléatoire). Voir le fichier .env.example."
+        )
+    if "*" in ALLOWED_HOSTS:
+        raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS ne doit pas contenir « * » en production.")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -89,12 +99,40 @@ TEMPLATES = [
 # Database
 # ---------------------------------------------------------------------------
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# SQLite in development; PostgreSQL as soon as DB_NAME is set (required in production,
+# where SQLite cannot lock rows for concurrent sales).
+if os.environ.get("DB_NAME"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": get_env("DB_NAME"),
+            "USER": get_env("DB_USER"),
+            "PASSWORD": get_env("DB_PASSWORD"),
+            "HOST": get_env("DB_HOST", "localhost"),
+            "PORT": get_env("DB_PORT", "5432"),
+            "CONN_MAX_AGE": 60,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+
+# The throttling counters live in the cache. With several Gunicorn workers a per-process
+# cache would multiply every limit, so production shares them through the database
+# (create the table once with `python manage.py createcachetable`).
+if DEBUG:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache",
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # API (Django REST Framework + JWT + CORS)
@@ -108,6 +146,14 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
+    # JSON only in production: no browsable API (forms, HTML) exposed to the public.
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        *(["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []),
+    ],
+    # Number of reverse proxies in front of Django (Nginx = 1): without it every client
+    # looks like the proxy and shares the same throttling counters.
+    "NUM_PROXIES": int(get_env("NUM_PROXIES", "0")),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_THROTTLE_CLASSES": [
@@ -204,14 +250,41 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Production hardening (only when DEBUG is off)
 # ---------------------------------------------------------------------------
 
+# Request size limits (images are limited to 2 MB by the model validator).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 200
+
+CSRF_TRUSTED_ORIGINS = get_env_list("CSRF_TRUSTED_ORIGINS", "")
+
 if not DEBUG:
+    # Behind Nginx, TLS ends at the proxy: trust X-Forwarded-Proto only when told to,
+    # otherwise SECURE_SSL_REDIRECT loops forever (and a spoofed header would be trusted).
+    if get_env("TRUST_PROXY_SSL", "0") == "1":
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
     X_FRAME_OPTIONS = "DENY"
+    # HSTS preload is an irreversible, opt-in commitment: deliberately not enabled.
+    SILENCED_SYSTEM_CHECKS = ["security.W021"]
+
+# ---------------------------------------------------------------------------
+# Logging (to stderr, collected by systemd / Docker; never log secrets)
+# ---------------------------------------------------------------------------
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"plain": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {"django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False}},
+}
 
 # ---------------------------------------------------------------------------
 # Tests

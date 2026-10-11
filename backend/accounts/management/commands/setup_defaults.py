@@ -41,7 +41,7 @@ class Command(BaseCommand):
             except ValidationError as error:
                 raise CommandError(
                     "Mot de passe par défaut refusé : " + " ".join(error.messages)
-                )
+                ) from error
 
         user = User.objects.create_superuser(username, password=password)
         user.groups.add(Group.objects.get(name=MANAGER_GROUP))

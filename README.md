@@ -141,7 +141,7 @@ shop_management/
 │   │   ├── urls.py
 │   │   ├── validators.py
 │   │   └── views.py
-│   ├── .gitignore
+│   ├── gunicorn.conf.py           # serveur WSGI de production
 │   ├── manage.py
 │   └── ruff.toml                  # configuration de Ruff (lint)
 ├── frontend/                      # Angular + Tailwind + daisyUI
@@ -182,6 +182,9 @@ shop_management/
 │   ├── dev.txt                    # développement (typage, audit)
 │   └── prod.txt                   # production (gunicorn, PostgreSQL)
 ├── .github/workflows/ci.yml       # intégration continue (GitHub Actions)
+├── deploy/
+│   └── nginx.conf.example         # Nginx : HTTPS, CSP, en-têtes, /media sécurisé
+├── SECURITY.md                    # politique et checklist de production
 ├── .env.example                   # modèle de configuration (sans secret)
 ├── .gitignore
 ├── LICENSE
@@ -227,6 +230,11 @@ set -a; source .env; set +a
 | `DJANGO_DEBUG` | `1` en développement, `0` en production | `1` |
 | `DJANGO_ALLOWED_HOSTS` | Hôtes autorisés, séparés par des virgules | `localhost,127.0.0.1` |
 | `CORS_ALLOWED_ORIGINS` | Origines autorisées pour le frontend | `http://localhost:4200` |
+| `CSRF_TRUSTED_ORIGINS` | Origines HTTPS de confiance (production, ex. `https://shop.example.com`) | *(optionnel)* |
+| `TRUST_PROXY_SSL` | `1` derrière Nginx (fait confiance à `X-Forwarded-Proto`, évite la boucle de redirection HTTPS) | `1` |
+| `NUM_PROXIES` | Nombre de proxys devant Django : la limitation de débit utilise alors l'IP réelle | `1` |
+| `ADMIN_URL` | Déplace l'administration (ex. `gestion-a8f3k2/`) | `admin/` |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | PostgreSQL (si `DB_NAME` est vide : SQLite) | *(production)* |
 | `DJANGO_DEFAULT_ADMIN_USERNAME` | Nom du compte admin par défaut | `admin` |
 | `DJANGO_DEFAULT_ADMIN_PASSWORD` | Mot de passe du compte admin (vide : généré aléatoirement) | *(optionnel)* |
 | `REGISTRATION_ENABLED` | `1` : inscription libre (comptes à approuver), `0` : désactivée | `1` |
@@ -392,7 +400,13 @@ Le résultat s'affiche dans l'onglet **Actions** du dépôt et sur le badge CI e
 
 ## Sécurité
 
-- Secrets en variables d'environnement, jamais dans le dépôt ; l'application refuse de démarrer sans `DJANGO_SECRET_KEY`.
+- Secrets en variables d'environnement, jamais dans le dépôt ; l'application refuse de démarrer sans `DJANGO_SECRET_KEY`, et en production avec une clé faible (< 50 caractères, `change-me`) ou `ALLOWED_HOSTS=*`.
+- Images : taille (2 Mo), contenu vérifié par Pillow et extensions limitées à jpg, png, webp (SVG refusé).
+- API en JSON seulement en production (pas d'interface navigable) ; vente limitée à 100 lignes ; tailles de requêtes bornées.
+- Compteurs de limitation de débit partagés entre les workers Gunicorn (cache en base) et calculés sur l'IP réelle (`NUM_PROXIES`).
+- Administration déplaçable (`ADMIN_URL`) ; CSP et en-têtes de sécurité dans `deploy/nginx.conf.example`.
+- Tests de sécurité (`backend/core/test_security.py`) : accès anonyme refusé, uploads malveillants, réglages de production.
+- Checklist de mise en production : voir [SECURITY.md](SECURITY.md).
 - Jetons access courts (15 min), refresh avec rotation et liste noire.
 - Limitation du débit sur la connexion et sur l'API.
 - Authentification obligatoire par défaut et permissions par rôle.
@@ -420,7 +434,8 @@ cd frontend && npm audit
 - [x] Tableau de bord des alertes
 - [x] Interface des mouvements de stock, historique des ventes et catégories
 - [x] Gestion des utilisateurs, droits individuels, inscription et mot de passe oublié
-- [ ] Déploiement (PostgreSQL, Gunicorn, Nginx)
+- [x] Durcissement de sécurité et fichiers de déploiement (`deploy/`, `gunicorn.conf.py`)
+- [ ] Mise en ligne effective (PostgreSQL, Gunicorn, Nginx, HTTPS)
 
 ## Contribuer
 

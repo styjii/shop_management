@@ -1,3 +1,3 @@
 -r base.txt
-gunicorn
-psycopg[binary]
+gunicorn==26.2.0
+psycopg[binary]==3.3.6

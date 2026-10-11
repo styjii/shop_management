@@ -7,6 +7,8 @@ from rest_framework import serializers
 from .models import Category, Product, Sale, SaleItem, StockMovement
 from .services import InsufficientStockError, apply_stock_change, lock_products
 
+MAX_SALE_LINES = 100
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,7 +54,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
         except InsufficientStockError:
             raise serializers.ValidationError(
                 {"quantity": f"Stock insuffisant pour « {product.name} »."}
-            )
+            ) from None
         validated_data["product"] = product
         return super().create(validated_data)
 
@@ -79,6 +81,10 @@ class SaleSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError(
                 "Une vente doit contenir au moins un article."
+            )
+        if len(value) > MAX_SALE_LINES:
+            raise serializers.ValidationError(
+                f"Une vente ne peut pas dépasser {MAX_SALE_LINES} lignes."
             )
         return value
 
@@ -107,7 +113,7 @@ class SaleSerializer(serializers.ModelSerializer):
             except InsufficientStockError:
                 raise serializers.ValidationError(
                     {"items": f"Stock insuffisant pour « {product.name} »."}
-                )
+                ) from None
             SaleItem.objects.create(
                 sale=sale, product=product, quantity=quantity,
                 unit_price=product.price,  # price frozen at sale time
