@@ -58,9 +58,82 @@ export interface Sale {
   items: SaleItem[];
 }
 
+export type Role = 'manager' | 'seller';
+
+export type Capability = 'manage_catalog' | 'manage_stock' | 'view_all_sales';
+
+/** Individual rights a manager can grant to a seller, on top of the role. */
+export const CAPABILITIES: { value: Capability; label: string; hint: string }[] = [
+  {
+    value: 'manage_catalog',
+    label: 'Gérer le catalogue',
+    hint: 'Créer, modifier et supprimer produits et catégories.',
+  },
+  {
+    value: 'manage_stock',
+    label: 'Gérer le stock',
+    hint: 'Enregistrer des entrées, sorties et ajustements.',
+  },
+  {
+    value: 'view_all_sales',
+    label: 'Voir toutes les ventes',
+    hint: 'Consulter les ventes des autres vendeurs.',
+  },
+];
+
 export interface CurrentUser {
   username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: Role | null;
   is_manager: boolean;
+  /** Effective rights: every right for a manager, the granted ones for a seller. */
+  capabilities: Capability[];
+}
+
+export interface ProfilePayload {
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export type UserStatus = 'pending' | 'active' | 'inactive';
+
+export interface AppUser {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: Role | null;
+  /** Rights granted individually (always empty for a manager). */
+  capabilities: Capability[];
+  is_active: boolean;
+  status: UserStatus;
+  /** Superusers cannot be changed from the application. */
+  is_protected: boolean;
+  last_login: string | null;
+  date_joined: string;
+}
+
+export interface UserPayload {
+  username?: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  password?: string;
+  role: Role | null;
+  capabilities: Capability[];
+  is_active: boolean;
 }
 
 export type MovementKind = 'IN' | 'OUT' | 'ADJ';

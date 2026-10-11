@@ -6,6 +6,13 @@
   </div>
 }
 
+@if (pendingAccounts() > 0) {
+  <div role="alert" class="alert alert-warning mb-4" data-testid="pending-accounts">
+    <span>{{ pendingAccounts() }} compte(s) en attente d'approbation.</span>
+    <a routerLink="/users" [queryParams]="{ status: 'pending' }" class="btn btn-sm">Voir</a>
+  </div>
+}
+
 <div class="stats stats-vertical mb-6 w-full bg-base-100 shadow sm:stats-horizontal">
   <div class="stat">
     <div class="stat-title">Produits en alerte</div>
@@ -50,7 +57,7 @@
               >
                 {{ p.quantity }} / seuil {{ p.low_stock_threshold }}
               </span>
-              @if (auth.isManager()) {
+              @if (auth.can('manage_stock')) {
                 <a
                   [routerLink]="['/movements']"
                   [queryParams]="{ product: p.id }"

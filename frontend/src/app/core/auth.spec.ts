@@ -5,6 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth';
+import { makeCurrentUser, makeManager } from '../../testing/factories';
 
 describe('AuthService', () => {
   const api = environment.apiUrl;
@@ -48,7 +49,7 @@ describe('AuthService', () => {
 
   it('loads the current user once and exposes the manager role', async () => {
     const first = firstValueFrom(auth.ensureUser());
-    http.expectOne(`${api}/auth/me/`).flush({ username: 'admin', is_manager: true });
+    http.expectOne(`${api}/auth/me/`).flush(makeManager({ username: 'admin' }));
     await first;
     expect(auth.isManager()).toBe(true);
 
@@ -70,5 +71,53 @@ describe('AuthService', () => {
 
   it('fails to refresh without a refresh token', async () => {
     await expect(firstValueFrom(auth.refresh())).rejects.toThrow('No refresh token');
+  });
+
+  it('can() gives managers every right and sellers only the granted ones', () => {
+    expect(auth.can('manage_stock')).toBe(false); // nobody loaded yet
+    auth.user.set(makeManager());
+    expect(auth.can('manage_catalog')).toBe(true);
+    auth.user.set(makeCurrentUser({ capabilities: ['manage_stock'] }));
+    expect(auth.can('manage_stock')).toBe(true);
+    expect(auth.can('manage_catalog')).toBe(false);
+  });
+
+  it('registers an account', () => {
+    auth
+      .register({ username: 'nouveau', email: 'n@example.com', password: 'Secret-12345' })
+      .subscribe();
+    const request = http.expectOne(`${api}/auth/register/`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toMatchObject({ username: 'nouveau', email: 'n@example.com' });
+  });
+
+  it('requests and confirms a password reset', () => {
+    auth.requestPasswordReset('a@example.com').subscribe();
+    expect(http.expectOne(`${api}/auth/password-reset/`).request.body).toEqual({
+      email: 'a@example.com',
+    });
+
+    auth.confirmPasswordReset('uid1', 'tok1', 'Nouveau-12345').subscribe();
+    expect(http.expectOne(`${api}/auth/password-reset/confirm/`).request.body).toEqual({
+      uid: 'uid1',
+      token: 'tok1',
+      new_password: 'Nouveau-12345',
+    });
+  });
+
+  it('changes the password with the old one', () => {
+    auth.changePassword('ancien', 'Nouveau-12345').subscribe();
+    expect(http.expectOne(`${api}/auth/change-password/`).request.body).toEqual({
+      old_password: 'ancien',
+      new_password: 'Nouveau-12345',
+    });
+  });
+
+  it('updates the profile and refreshes the current user', () => {
+    auth.updateProfile({ email: 'new@example.com', first_name: 'Léa', last_name: '' }).subscribe();
+    const request = http.expectOne(`${api}/auth/me/`);
+    expect(request.request.method).toBe('PATCH');
+    request.flush(makeCurrentUser({ email: 'new@example.com', first_name: 'Léa' }));
+    expect(auth.user()?.email).toBe('new@example.com');
   });
 });

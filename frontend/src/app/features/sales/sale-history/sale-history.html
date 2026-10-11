@@ -11,7 +11,7 @@
 
 <p class="mb-2 text-sm opacity-70">
   {{ count() }} vente(s)
-  @if (!auth.isManager()) {
+  @if (!auth.can('view_all_sales')) {
     · uniquement les vôtres
   }
   @if (loading()) {
@@ -25,7 +25,7 @@
       <tr>
         <th>Vente</th>
         <th>Date</th>
-        @if (auth.isManager()) {
+        @if (auth.can('view_all_sales')) {
           <th class="hidden sm:table-cell">Vendeur</th>
         }
         <th class="text-right">Articles</th>
@@ -38,7 +38,7 @@
         <tr class="hover cursor-pointer" (click)="toggle(s.id)">
           <td class="font-medium">n°{{ s.id }}</td>
           <td class="whitespace-nowrap">{{ s.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
-          @if (auth.isManager()) {
+          @if (auth.can('view_all_sales')) {
             <td class="hidden sm:table-cell">{{ s.seller }}</td>
           }
           <td class="text-right">{{ itemCount(s) }}</td>
@@ -56,7 +56,7 @@
         </tr>
         @if (expanded() === s.id) {
           <tr data-testid="sale-detail">
-            <td [attr.colspan]="auth.isManager() ? 6 : 5" class="bg-base-200">
+            <td [attr.colspan]="auth.can('view_all_sales') ? 6 : 5" class="bg-base-200">
               <ul class="list">
                 @for (item of s.items; track item.product) {
                   <li class="list-row items-center py-1">
@@ -76,7 +76,10 @@
       } @empty {
         @if (!loading()) {
           <tr>
-            <td [attr.colspan]="auth.isManager() ? 6 : 5" class="py-8 text-center opacity-70">
+            <td
+              [attr.colspan]="auth.can('view_all_sales') ? 6 : 5"
+              class="py-8 text-center opacity-70"
+            >
               Aucune vente enregistrée.
             </td>
           </tr>

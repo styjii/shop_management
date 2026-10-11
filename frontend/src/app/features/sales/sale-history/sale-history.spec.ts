@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
-import { makeSale, page } from '../../../../testing/factories';
+import { makeCurrentUser, makeManager, makeSale, page } from '../../../../testing/factories';
 import { AuthService } from '../../../core/auth';
 import { SaleHistory } from './sale-history';
 
@@ -18,7 +18,7 @@ describe('SaleHistory', () => {
       imports: [SaleHistory],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
-    TestBed.inject(AuthService).user.set({ username: 'u', is_manager: manager });
+    TestBed.inject(AuthService).user.set(manager ? makeManager() : makeCurrentUser());
     http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(SaleHistory);
     fixture.detectChanges();

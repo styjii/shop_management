@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { Login } from './login';
+import { makeManager } from '../../../../testing/factories';
 
 describe('Login', () => {
   const api = environment.apiUrl;
@@ -39,7 +40,7 @@ describe('Login', () => {
     fixture.componentInstance.submit();
 
     http.expectOne(`${api}/auth/token/`).flush({ access: 'a', refresh: 'r' });
-    http.expectOne(`${api}/auth/me/`).flush({ username: 'admin', is_manager: true });
+    http.expectOne(`${api}/auth/me/`).flush(makeManager({ username: 'admin' }));
 
     expect(navigate).toHaveBeenCalledWith(['/']);
     http.verify();

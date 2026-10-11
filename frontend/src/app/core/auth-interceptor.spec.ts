@@ -103,4 +103,20 @@ describe('authInterceptor', () => {
     expect(error).toHaveBeenCalled();
     expect(TestBed.inject(AuthService).isLoggedIn()).toBe(true);
   });
+
+  it('does not send the token to the registration and password reset endpoints', () => {
+    for (const path of ['register/', 'password-reset/', 'password-reset/confirm/']) {
+      client.post(`${api}/auth/${path}`, {}).subscribe();
+      expect(http.expectOne(`${api}/auth/${path}`).request.headers.has('Authorization')).toBe(
+        false,
+      );
+    }
+  });
+
+  it('sends the token to change-password', () => {
+    client.post(`${api}/auth/change-password/`, {}).subscribe();
+    expect(
+      http.expectOne(`${api}/auth/change-password/`).request.headers.get('Authorization'),
+    ).toBe('Bearer old');
+  });
 });

@@ -4,8 +4,10 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth';
 
-// Endpoints that must be called without a Bearer token. /auth/me/ is NOT one of them.
-const PUBLIC_AUTH_URL = /\/auth\/(token|refresh|logout)\/?$/;
+// Endpoints that must be called without a Bearer token (an expired one would make the
+// API answer 401 even though they are public). /auth/me/ and /auth/change-password/ are NOT
+// in this list: they need the token.
+const PUBLIC_AUTH_URL = /\/auth\/(token|refresh|logout|register|password-reset(\/confirm)?)\/?$/;
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);

@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
-import { makeProduct, makeSale, page } from '../../../../testing/factories';
+import { makeManager, makeProduct, makeSale, page } from '../../../../testing/factories';
 import { AuthService } from '../../../core/auth';
 import { Dashboard } from './dashboard';
 
@@ -54,7 +54,7 @@ describe('Dashboard', () => {
 
   it('offers a restocking link to managers only', async () => {
     const { http, fixture } = setup();
-    TestBed.inject(AuthService).user.set({ username: 'chef', is_manager: true });
+    TestBed.inject(AuthService).user.set(makeManager());
     http
       .expectOne(`${api}/products/low-stock/`)
       .flush([makeProduct({ quantity: 1, is_low_stock: true })]);
@@ -64,5 +64,34 @@ describe('Dashboard', () => {
     const link = (fixture.nativeElement as HTMLElement).querySelector('a[href*="/movements"]');
     expect(link?.textContent).toContain('Réapprovisionner');
     expect(link?.getAttribute('href')).toContain('product=1');
+  });
+
+  it('tells managers how many registrations are waiting for approval', async () => {
+    const { http, fixture } = setup();
+    TestBed.inject(AuthService).user.set(makeManager());
+    http.expectOne(`${api}/products/low-stock/`).flush([]);
+    http.expectOne((r) => r.url === `${api}/sales/`).flush(page([]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const request = http.expectOne((r) => r.url === `${api}/users/`);
+    expect(request.request.params.get('status')).toBe('pending');
+    request.flush(page([], 3));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const banner = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="pending-accounts"]',
+    );
+    expect(banner?.textContent).toContain('3 compte(s) en attente');
+  });
+
+  it('does not ask sellers for pending accounts', async () => {
+    const { http, fixture } = setup();
+    http.expectOne(`${api}/products/low-stock/`).flush([]);
+    http.expectOne((r) => r.url === `${api}/sales/`).flush(page([]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    http.expectNone((r) => r.url === `${api}/users/`);
   });
 });

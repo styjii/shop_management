@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard, managerGuard } from './core/auth-guard';
+import { authGuard, capabilityGuard, guestGuard, managerGuard } from './core/auth-guard';
 
 export const routes: Routes = [
   {
@@ -7,6 +7,25 @@ export const routes: Routes = [
     title: 'Connexion',
     canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
+  },
+  {
+    path: 'register',
+    title: 'Créer un compte',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
+  },
+  {
+    path: 'forgot-password',
+    title: 'Mot de passe oublié',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password').then((m) => m.ForgotPassword),
+  },
+  {
+    path: 'reset-password',
+    title: 'Nouveau mot de passe',
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password').then((m) => m.ResetPassword),
   },
   {
     path: '',
@@ -28,14 +47,14 @@ export const routes: Routes = [
       {
         path: 'products/new',
         title: 'Nouveau produit',
-        canActivate: [managerGuard],
+        canActivate: [capabilityGuard('manage_catalog')],
         loadComponent: () =>
           import('./features/products/product-form/product-form').then((m) => m.ProductForm),
       },
       {
         path: 'products/:id/edit',
         title: 'Modifier le produit',
-        canActivate: [managerGuard],
+        canActivate: [capabilityGuard('manage_catalog')],
         loadComponent: () =>
           import('./features/products/product-form/product-form').then((m) => m.ProductForm),
       },
@@ -53,14 +72,25 @@ export const routes: Routes = [
       {
         path: 'categories',
         title: 'Catégories',
-        canActivate: [managerGuard],
+        canActivate: [capabilityGuard('manage_catalog')],
         loadComponent: () =>
           import('./features/categories/categories/categories').then((m) => m.Categories),
       },
       {
+        path: 'account',
+        title: 'Mon compte',
+        loadComponent: () => import('./features/account/account/account').then((m) => m.Account),
+      },
+      {
+        path: 'users',
+        title: 'Utilisateurs',
+        canActivate: [managerGuard],
+        loadComponent: () => import('./features/users/users/users').then((m) => m.Users),
+      },
+      {
         path: 'movements',
         title: 'Mouvements de stock',
-        canActivate: [managerGuard],
+        canActivate: [capabilityGuard('manage_stock')],
         loadComponent: () =>
           import('./features/movements/movements/movements').then((m) => m.Movements),
       },

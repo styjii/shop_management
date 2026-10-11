@@ -1,6 +1,6 @@
 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
   <h1 class="text-2xl font-bold">Produits</h1>
-  @if (auth.isManager()) {
+  @if (auth.can('manage_catalog')) {
     <a routerLink="/products/new" class="btn btn-primary btn-sm sm:btn-md">+ Nouveau produit</a>
   }
 </div>
@@ -56,7 +56,7 @@
         <th class="hidden sm:table-cell">Catégorie</th>
         <th class="text-right">Prix</th>
         <th class="text-right">Stock</th>
-        @if (auth.isManager()) {
+        @if (showActions()) {
           <th></th>
         }
       </tr>
@@ -91,27 +91,35 @@
               <span class="badge badge-warning badge-sm ml-1">Stock bas</span>
             }
           </td>
-          @if (auth.isManager()) {
+          @if (showActions()) {
             <td class="whitespace-nowrap text-right">
-              <a
-                [routerLink]="['/movements']"
-                [queryParams]="{ product: p.id }"
-                class="btn btn-ghost btn-xs"
-                >Stock</a
-              >
-              <a [routerLink]="['/products', p.id, 'edit']" class="btn btn-ghost btn-xs"
-                >Modifier</a
-              >
-              <button type="button" class="btn btn-ghost btn-xs text-error" (click)="askDelete(p)">
-                Supprimer
-              </button>
+              @if (auth.can('manage_stock')) {
+                <a
+                  [routerLink]="['/movements']"
+                  [queryParams]="{ product: p.id }"
+                  class="btn btn-ghost btn-xs"
+                  >Stock</a
+                >
+              }
+              @if (auth.can('manage_catalog')) {
+                <a [routerLink]="['/products', p.id, 'edit']" class="btn btn-ghost btn-xs"
+                  >Modifier</a
+                >
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error"
+                  (click)="askDelete(p)"
+                >
+                  Supprimer
+                </button>
+              }
             </td>
           }
         </tr>
       } @empty {
         @if (!loading()) {
           <tr>
-            <td [attr.colspan]="auth.isManager() ? 5 : 4" class="py-8 text-center opacity-70">
+            <td [attr.colspan]="showActions() ? 5 : 4" class="py-8 text-center opacity-70">
               Aucun produit trouvé.
             </td>
           </tr>

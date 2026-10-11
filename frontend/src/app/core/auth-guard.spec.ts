@@ -10,7 +10,8 @@ import {
 import { Observable, firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth';
-import { authGuard, guestGuard, managerGuard } from './auth-guard';
+import { authGuard, capabilityGuard, guestGuard, managerGuard } from './auth-guard';
+import { makeCurrentUser, makeManager } from '../../testing/factories';
 
 type GuardFn = typeof authGuard;
 
@@ -43,12 +44,12 @@ describe('guards', () => {
   });
 
   it('managerGuard lets managers in', async () => {
-    auth.user.set({ username: 'chef', is_manager: true });
+    auth.user.set(makeManager());
     expect(await firstValueFrom(run(managerGuard) as Observable<unknown>)).toBe(true);
   });
 
   it('managerGuard sends sellers back to the product list', async () => {
-    auth.user.set({ username: 'vendeur', is_manager: false });
+    auth.user.set(makeCurrentUser());
     const result = await firstValueFrom(run(managerGuard) as Observable<unknown>);
     expect(urlOf(result)).toBe('/products');
   });
@@ -60,5 +61,26 @@ describe('guards', () => {
       .expectOne(`${environment.apiUrl}/auth/me/`)
       .flush({}, { status: 500, statusText: 'Error' });
     expect(urlOf(await result)).toBe('/login');
+  });
+
+  it('capabilityGuard lets in the users who have the right', async () => {
+    auth.user.set(makeCurrentUser({ capabilities: ['manage_stock'] }));
+    const guard = capabilityGuard('manage_stock');
+    expect(await firstValueFrom(run(guard) as Observable<unknown>)).toBe(true);
+  });
+
+  it('capabilityGuard sends the others back to the dashboard', async () => {
+    auth.user.set(makeCurrentUser({ capabilities: ['manage_stock'] }));
+    const result = await firstValueFrom(
+      run(capabilityGuard('manage_catalog')) as Observable<unknown>,
+    );
+    expect(urlOf(result)).toBe('/dashboard');
+  });
+
+  it('capabilityGuard lets managers in whatever the right', async () => {
+    auth.user.set(makeManager());
+    expect(
+      await firstValueFrom(run(capabilityGuard('view_all_sales')) as Observable<unknown>),
+    ).toBe(true);
   });
 });

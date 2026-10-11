@@ -1,4 +1,4 @@
-import { Product, Sale, StockMovement } from '../app/models/inventory';
+import { AppUser, CurrentUser, Product, Sale, StockMovement } from '../app/models/inventory';
 
 export function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
@@ -38,6 +38,48 @@ export function makeMovement(overrides: Partial<StockMovement> = {}): StockMovem
     reason: 'Livraison',
     created_by: 'chef',
     created_at: '2026-10-09T09:00:00Z',
+    ...overrides,
+  };
+}
+
+export function makeCurrentUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
+  return {
+    username: 'vendeur',
+    email: 'vendeur@example.com',
+    first_name: '',
+    last_name: '',
+    role: 'seller',
+    is_manager: false,
+    capabilities: [],
+    ...overrides,
+  };
+}
+
+export function makeManager(overrides: Partial<CurrentUser> = {}): CurrentUser {
+  return makeCurrentUser({
+    username: 'chef',
+    email: 'chef@example.com',
+    role: 'manager',
+    is_manager: true,
+    capabilities: ['manage_catalog', 'manage_stock', 'view_all_sales'],
+    ...overrides,
+  });
+}
+
+export function makeAppUser(overrides: Partial<AppUser> = {}): AppUser {
+  return {
+    id: 2,
+    username: 'vendeur',
+    email: 'vendeur@example.com',
+    first_name: 'Léa',
+    last_name: 'Martin',
+    role: 'seller',
+    capabilities: [],
+    is_active: true,
+    status: 'active',
+    is_protected: false,
+    last_login: '2026-10-08T08:00:00Z',
+    date_joined: '2026-09-01T08:00:00Z',
     ...overrides,
   };
 }

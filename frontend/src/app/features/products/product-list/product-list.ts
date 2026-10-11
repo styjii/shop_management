@@ -33,6 +33,9 @@ export class ProductList {
 
   private readonly criteria = signal<ProductFilters>({ ordering: 'name', page: 1 });
   readonly page = computed(() => this.criteria().page ?? 1);
+  readonly showActions = computed(
+    () => this.auth.can('manage_catalog') || this.auth.can('manage_stock'),
+  );
   readonly pageCount = computed(() => Math.max(1, Math.ceil(this.count() / this.pageSize)));
 
   readonly filters = new FormGroup({

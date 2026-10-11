@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../environments/environment';
 import { App } from './app';
+import { makeCurrentUser, makeManager } from '../testing/factories';
 
 describe('App', () => {
   const setup = () => {
@@ -31,7 +32,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    http.expectOne(`${environment.apiUrl}/auth/me/`).flush({ username: 'chef', is_manager: true });
+    http.expectOne(`${environment.apiUrl}/auth/me/`).flush(makeManager());
     await fixture.whenStable();
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -47,14 +48,42 @@ describe('App', () => {
     const http = setup();
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    http
-      .expectOne(`${environment.apiUrl}/auth/me/`)
-      .flush({ username: 'vendeur', is_manager: false });
+    http.expectOne(`${environment.apiUrl}/auth/me/`).flush(makeCurrentUser());
     await fixture.whenStable();
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Historique');
     expect(text).not.toContain('Mouvements');
     expect(text).not.toContain('Catégories');
+  });
+
+  it('shows each management link according to the individual rights', async () => {
+    sessionStorage.setItem('access', 'token');
+    const http = setup();
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    http
+      .expectOne(`${environment.apiUrl}/auth/me/`)
+      .flush(makeCurrentUser({ capabilities: ['manage_stock'] }));
+    await fixture.whenStable();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Mouvements');
+    expect(text).not.toContain('Catégories');
+    expect(text).not.toContain('Utilisateurs');
+  });
+
+  it('shows the user management link to managers', async () => {
+    sessionStorage.setItem('access', 'token');
+    const http = setup();
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/auth/me/`).flush(makeManager());
+    await fixture.whenStable();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Utilisateurs');
+    expect(text).toContain('Catégories');
+    expect(text).toContain('Mouvements');
   });
 });

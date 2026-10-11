@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
+import { Capability } from '../models/inventory';
 import { AuthService } from './auth';
 
 /** Routes that require a logged-in user. (UX only: the API enforces the real rules.) */
@@ -15,7 +16,7 @@ export const guestGuard: CanActivateFn = () => {
   return auth.isLoggedIn() ? inject(Router).createUrlTree(['/']) : true;
 };
 
-/** Routes reserved for managers (product creation and edition). */
+/** Routes reserved for the manager role (user management): cannot be delegated. */
 export const managerGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
@@ -24,3 +25,15 @@ export const managerGuard: CanActivateFn = () => {
     catchError(() => of(router.createUrlTree(['/login']))),
   );
 };
+
+/** Routes that need one individual right (managers always have it). */
+export const capabilityGuard =
+  (capability: Capability): CanActivateFn =>
+  () => {
+    const auth = inject(AuthService);
+    const router = inject(Router);
+    return auth.ensureUser().pipe(
+      map(() => (auth.can(capability) ? true : router.createUrlTree(['/dashboard']))),
+      catchError(() => of(router.createUrlTree(['/login']))),
+    );
+  };

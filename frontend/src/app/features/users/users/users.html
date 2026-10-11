@@ -1,0 +1,372 @@
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+  <h1 class="text-2xl font-bold">Utilisateurs</h1>
+  <button type="button" class="btn btn-primary btn-sm sm:btn-md" (click)="openCreate()">
+    + Nouvel utilisateur
+  </button>
+</div>
+
+<form [formGroup]="filters" class="card mb-4 bg-base-100 shadow">
+  <div class="card-body grid gap-3 p-4 sm:grid-cols-3">
+    <input
+      type="search"
+      class="input w-full"
+      formControlName="search"
+      placeholder="Rechercher (identifiant, nom, e-mail)"
+      aria-label="Rechercher"
+    />
+    <select class="select w-full" formControlName="status" aria-label="Statut">
+      <option value="">Tous les statuts</option>
+      <option value="pending">En attente d'approbation</option>
+      <option value="active">Actifs</option>
+      <option value="inactive">Désactivés</option>
+    </select>
+    <select class="select w-full" formControlName="role" aria-label="Rôle">
+      <option value="">Tous les rôles</option>
+      <option value="manager">Gestionnaires</option>
+      <option value="seller">Vendeurs</option>
+    </select>
+  </div>
+</form>
+
+@if (error(); as message) {
+  <div role="alert" class="alert alert-error mb-4">
+    <span>{{ message }}</span>
+  </div>
+}
+
+<p class="mb-2 text-sm opacity-70">
+  {{ count() }} utilisateur(s)
+  @if (loading()) {
+    <span class="loading loading-spinner loading-xs ml-2"></span>
+  }
+</p>
+
+<div class="overflow-x-auto rounded-box bg-base-100 shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Utilisateur</th>
+        <th>Rôle</th>
+        <th>Statut</th>
+        <th class="hidden md:table-cell">Dernière connexion</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (u of users(); track u.id) {
+        <tr>
+          <td>
+            <div class="font-medium">{{ displayName(u) }}</div>
+            <div class="text-xs opacity-60">{{ u.username }} · {{ u.email }}</div>
+          </td>
+          <td>
+            @if (u.role) {
+              <span
+                class="badge badge-sm"
+                [class.badge-primary]="u.role === 'manager'"
+                [class.badge-ghost]="u.role === 'seller'"
+              >
+                {{ u.role === 'manager' ? 'Gestionnaire' : 'Vendeur' }}
+              </span>
+              @if (u.role === 'seller' && u.capabilities.length > 0) {
+                <div class="mt-1 flex flex-wrap gap-1">
+                  @for (c of u.capabilities; track c) {
+                    <span class="badge badge-outline badge-xs">{{ capabilityLabel(c) }}</span>
+                  }
+                </div>
+              }
+            } @else {
+              <span class="opacity-50">—</span>
+            }
+          </td>
+          <td>
+            <span
+              class="badge badge-sm"
+              [class.badge-success]="u.status === 'active'"
+              [class.badge-warning]="u.status === 'pending'"
+              [class.badge-ghost]="u.status === 'inactive'"
+            >
+              {{ statusLabel(u.status) }}
+            </span>
+            @if (u.is_protected) {
+              <span class="badge badge-info badge-sm ml-1">Protégé</span>
+            }
+          </td>
+          <td class="hidden whitespace-nowrap md:table-cell">
+            {{ u.last_login ? (u.last_login | date: 'dd/MM/yyyy HH:mm') : 'Jamais' }}
+          </td>
+          <td class="text-right">
+            @if (u.is_protected) {
+              <span class="text-xs opacity-60">Géré depuis /admin/</span>
+            } @else {
+              <div class="flex flex-wrap justify-end gap-1">
+                @if (u.status === 'pending') {
+                  <button type="button" class="btn btn-success btn-xs" (click)="openEdit(u)">
+                    Approuver
+                  </button>
+                } @else {
+                  <button type="button" class="btn btn-ghost btn-xs" (click)="openEdit(u)">
+                    Modifier
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-xs" (click)="toggleActive(u)">
+                    {{ u.is_active ? 'Désactiver' : 'Réactiver' }}
+                  </button>
+                }
+                <button type="button" class="btn btn-ghost btn-xs" (click)="openPassword(u)">
+                  Mot de passe
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error"
+                  (click)="askDelete(u)"
+                >
+                  {{ u.status === 'pending' ? 'Refuser' : 'Supprimer' }}
+                </button>
+              </div>
+            }
+          </td>
+        </tr>
+      } @empty {
+        @if (!loading()) {
+          <tr>
+            <td colspan="5" class="py-8 text-center opacity-70">Aucun utilisateur trouvé.</td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (pageCount() > 1) {
+  <div class="mt-4 flex justify-center">
+    <div class="join">
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() <= 1"
+        (click)="goTo(page() - 1)"
+      >
+        «
+      </button>
+      <button type="button" class="btn join-item pointer-events-none">
+        Page {{ page() }} / {{ pageCount() }}
+      </button>
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() >= pageCount()"
+        (click)="goTo(page() + 1)"
+      >
+        »
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Create / edit / approve -->
+@if (editing(); as target) {
+  <div class="modal modal-open" role="dialog" aria-modal="true">
+    <form [formGroup]="form" (ngSubmit)="save()" class="modal-box max-w-2xl" novalidate>
+      <h3 class="mb-3 text-lg font-bold" data-testid="editor-title">
+        @if (target === 'new') {
+          Nouvel utilisateur
+        } @else if (target.status === 'pending') {
+          Approuver « {{ target.username }} »
+        } @else {
+          Modifier « {{ target.username }} »
+        }
+      </h3>
+
+      @if (generalError(); as message) {
+        <div role="alert" class="alert alert-error alert-soft mb-3 text-sm">
+          <span>{{ message }}</span>
+        </div>
+      }
+
+      <div class="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+        @if (target === 'new') {
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Identifiant</legend>
+            <input
+              type="text"
+              class="input w-full"
+              formControlName="username"
+              autocomplete="off"
+              [class.input-error]="
+                (form.controls.username.touched && form.controls.username.invalid) ||
+                errorsFor('username').length > 0
+              "
+            />
+            @if (form.controls.username.touched && form.controls.username.invalid) {
+              <p class="label text-error">L'identifiant est obligatoire.</p>
+            }
+            @for (message of errorsFor('username'); track message) {
+              <p class="label text-error">{{ message }}</p>
+            }
+          </fieldset>
+        }
+
+        <fieldset class="fieldset" [class.sm:col-span-2]="target !== 'new'">
+          <legend class="fieldset-legend">Adresse e-mail</legend>
+          <input
+            type="email"
+            class="input w-full"
+            formControlName="email"
+            [class.input-error]="
+              (form.controls.email.touched && form.controls.email.invalid) ||
+              errorsFor('email').length > 0
+            "
+          />
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <p class="label text-error">Saisissez une adresse e-mail valide.</p>
+          }
+          @for (message of errorsFor('email'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Prénom</legend>
+          <input type="text" class="input w-full" formControlName="first_name" />
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Nom</legend>
+          <input type="text" class="input w-full" formControlName="last_name" />
+        </fieldset>
+
+        @if (target === 'new') {
+          <fieldset class="fieldset sm:col-span-2">
+            <legend class="fieldset-legend">Mot de passe initial</legend>
+            <input
+              type="password"
+              class="input w-full"
+              formControlName="password"
+              autocomplete="new-password"
+              [class.input-error]="
+                (form.controls.password.touched && form.controls.password.invalid) ||
+                errorsFor('password').length > 0
+              "
+            />
+            <p class="label">
+              {{ passwordMinLength }} caractères minimum. Communiquez-le à la personne.
+            </p>
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <p class="label text-error">Au moins {{ passwordMinLength }} caractères.</p>
+            }
+            @for (message of errorsFor('password'); track message) {
+              <p class="label text-error">{{ message }}</p>
+            }
+          </fieldset>
+        }
+
+        <fieldset class="fieldset sm:col-span-2">
+          <legend class="fieldset-legend">Rôle</legend>
+          <select class="select w-full" formControlName="role" aria-label="Rôle">
+            <option value="seller">Vendeur</option>
+            <option value="manager">
+              Gestionnaire (tous les droits, gestion des utilisateurs)
+            </option>
+          </select>
+          @for (message of errorsFor('role'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        @if (form.controls.role.value === 'seller') {
+          <fieldset class="fieldset sm:col-span-2" formGroupName="capabilities">
+            <legend class="fieldset-legend">Droits supplémentaires</legend>
+            <div class="flex flex-col gap-2" data-testid="capabilities">
+              @for (c of capabilities; track c.value) {
+                <label class="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-sm mt-0.5"
+                    [formControlName]="c.value"
+                  />
+                  <span>
+                    <span class="font-medium">{{ c.label }}</span>
+                    <span class="block text-xs opacity-60">{{ c.hint }}</span>
+                  </span>
+                </label>
+              }
+            </div>
+            @for (message of errorsFor('capabilities'); track message) {
+              <p class="label text-error">{{ message }}</p>
+            }
+          </fieldset>
+        }
+
+        <label class="label cursor-pointer justify-start gap-3 sm:col-span-2">
+          <input type="checkbox" class="toggle toggle-success" formControlName="is_active" />
+          <span>Compte actif (peut se connecter)</span>
+        </label>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn" (click)="closeEditor()">Annuler</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          {{ target !== 'new' && target.status === 'pending' ? 'Approuver' : 'Enregistrer' }}
+        </button>
+      </div>
+    </form>
+    <div class="modal-backdrop" (click)="closeEditor()"></div>
+  </div>
+}
+
+<!-- New password -->
+@if (passwordTarget(); as target) {
+  <div class="modal modal-open" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Nouveau mot de passe de « {{ target.username }} »</h3>
+      <p class="py-2 text-sm opacity-70">
+        Toutes ses sessions seront fermées. Communiquez-lui ce mot de passe en personne.
+      </p>
+      <input
+        type="password"
+        class="input w-full"
+        [formControl]="newPassword"
+        autocomplete="new-password"
+        aria-label="Nouveau mot de passe"
+        [class.input-error]="
+          (newPassword.touched && newPassword.invalid) || passwordErrors().length > 0
+        "
+      />
+      @if (newPassword.touched && newPassword.invalid) {
+        <p class="label text-error">Au moins {{ passwordMinLength }} caractères.</p>
+      }
+      @for (message of passwordErrors(); track message) {
+        <p class="label text-error">{{ message }}</p>
+      }
+      <div class="modal-action">
+        <button type="button" class="btn" (click)="closePassword()">Annuler</button>
+        <button type="button" class="btn btn-primary" (click)="savePassword()">Enregistrer</button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="closePassword()"></div>
+  </div>
+}
+
+<!-- Delete -->
+@if (toDelete(); as target) {
+  <div class="modal modal-open" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">
+        {{
+          target.status === 'pending' ? 'Refuser cette demande ?' : 'Supprimer cet utilisateur ?'
+        }}
+      </h3>
+      <p class="py-4">
+        Le compte « {{ target.username }} » sera supprimé définitivement. S'il a déjà enregistré des
+        ventes ou des mouvements de stock, désactivez-le plutôt.
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn btn-error" (click)="confirmDelete()">Supprimer</button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="cancelDelete()"></div>
+  </div>
+}

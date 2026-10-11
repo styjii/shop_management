@@ -1,0 +1,136 @@
+<div class="flex min-h-[80vh] items-center justify-center">
+  <div class="card w-full max-w-md bg-base-100 shadow-xl">
+    @if (done(); as message) {
+      <div class="card-body items-center gap-3 text-center">
+        <h1 class="card-title text-2xl">Demande envoyée</h1>
+        <p data-testid="done">{{ message }}</p>
+        <a routerLink="/login" class="btn btn-primary mt-2">Retour à la connexion</a>
+      </div>
+    } @else {
+      <form class="card-body gap-2" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="text-center">
+          <h1 class="card-title justify-center text-2xl">Créer un compte</h1>
+          <p class="text-sm opacity-70">
+            Votre compte sera activé par un gestionnaire avant de pouvoir être utilisé.
+          </p>
+        </div>
+
+        @if (generalError(); as message) {
+          <div role="alert" class="alert alert-error alert-soft text-sm">
+            <span>{{ message }}</span>
+          </div>
+        }
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Identifiant</legend>
+          <input
+            type="text"
+            class="input w-full"
+            formControlName="username"
+            autocomplete="username"
+            [class.input-error]="
+              (form.controls.username.touched && form.controls.username.invalid) ||
+              errorsFor('username').length > 0
+            "
+          />
+          @if (form.controls.username.touched && form.controls.username.invalid) {
+            <p class="label text-error">
+              Lettres, chiffres et . @ + - _ uniquement (150 caractères maximum).
+            </p>
+          }
+          @for (message of errorsFor('username'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Adresse e-mail</legend>
+          <input
+            type="email"
+            class="input w-full"
+            formControlName="email"
+            autocomplete="email"
+            [class.input-error]="
+              (form.controls.email.touched && form.controls.email.invalid) ||
+              errorsFor('email').length > 0
+            "
+          />
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <p class="label text-error">Saisissez une adresse e-mail valide.</p>
+          }
+          @for (message of errorsFor('email'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <div class="grid gap-2 sm:grid-cols-2">
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Prénom</legend>
+            <input
+              type="text"
+              class="input w-full"
+              formControlName="first_name"
+              autocomplete="given-name"
+            />
+          </fieldset>
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Nom</legend>
+            <input
+              type="text"
+              class="input w-full"
+              formControlName="last_name"
+              autocomplete="family-name"
+            />
+          </fieldset>
+        </div>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Mot de passe</legend>
+          <input
+            type="password"
+            class="input w-full"
+            formControlName="password"
+            autocomplete="new-password"
+            [class.input-error]="
+              (form.controls.password.touched && form.controls.password.invalid) ||
+              errorsFor('password').length > 0
+            "
+          />
+          <p class="label">{{ passwordMinLength }} caractères minimum.</p>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <p class="label text-error">
+              Le mot de passe doit faire au moins {{ passwordMinLength }} caractères.
+            </p>
+          }
+          @for (message of errorsFor('password'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Confirmer le mot de passe</legend>
+          <input
+            type="password"
+            class="input w-full"
+            formControlName="confirm"
+            autocomplete="new-password"
+            [class.input-error]="form.controls.confirm.touched && form.errors?.['mismatch']"
+          />
+          @if (form.controls.confirm.touched && form.errors?.['mismatch']) {
+            <p class="label text-error">Les mots de passe ne correspondent pas.</p>
+          }
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary mt-2" [disabled]="saving()">
+          @if (saving()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          Envoyer ma demande
+        </button>
+        <a routerLink="/login" class="link mt-1 text-center text-sm"
+          >Déjà un compte ? Se connecter</a
+        >
+      </form>
+    }
+  </div>
+</div>

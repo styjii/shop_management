@@ -7,7 +7,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
-import { makeProduct, page } from '../../../../testing/factories';
+import { makeCurrentUser, makeManager, makeProduct, page } from '../../../../testing/factories';
 import { AuthService } from '../../../core/auth';
 import { ToastService } from '../../../core/toast';
 import { ProductList } from './product-list';
@@ -25,7 +25,7 @@ describe('ProductList', () => {
       imports: [ProductList],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
-    TestBed.inject(AuthService).user.set({ username: 'u', is_manager: manager });
+    TestBed.inject(AuthService).user.set(manager ? makeManager() : makeCurrentUser());
     http = TestBed.inject(HttpTestingController);
 
     const fixture = TestBed.createComponent(ProductList);
@@ -138,5 +138,26 @@ describe('ProductList', () => {
     const [request] = productRequests();
     expect(request.request.params.get('page')).toBe('2');
     request.flush(page([makeProduct()], 45));
+  });
+
+  it('gives the stock link without the catalog buttons to a seller who manages the stock', async () => {
+    sessionStorage.clear();
+    TestBed.configureTestingModule({
+      imports: [ProductList],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    TestBed.inject(AuthService).user.set(makeCurrentUser({ capabilities: ['manage_stock'] }));
+    http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(ProductList);
+    fixture.detectChanges();
+    http.expectOne(`${api}/categories/`).flush([]);
+    productRequests()[0].flush(page([makeProduct()], 1));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Stock');
+    expect(text).not.toContain('Modifier');
+    expect(text).not.toContain('Nouveau produit');
   });
 });

@@ -1,0 +1,173 @@
+<h1 class="mb-4 text-2xl font-bold">Mon compte</h1>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card bg-base-100 shadow">
+    <div class="card-body gap-3">
+      <h2 class="card-title">Profil</h2>
+
+      @if (auth.user(); as user) {
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-semibold" data-testid="username">{{ user.username }}</span>
+          <span
+            class="badge"
+            [class.badge-primary]="user.role === 'manager'"
+            [class.badge-ghost]="user.role !== 'manager'"
+          >
+            {{ user.role === 'manager' ? 'Gestionnaire' : 'Vendeur' }}
+          </span>
+        </div>
+
+        <div>
+          <p class="mb-1 text-sm font-medium">Vos droits</p>
+          <ul class="flex flex-wrap gap-2" data-testid="rights">
+            @for (c of capabilities; track c.value) {
+              <li
+                class="badge"
+                [class.badge-success]="hasCapability(c.value)"
+                [class.badge-outline]="!hasCapability(c.value)"
+                [class.opacity-50]="!hasCapability(c.value)"
+              >
+                {{ c.label }}
+              </li>
+            }
+          </ul>
+          @if (user.role !== 'manager') {
+            <p class="mt-1 text-xs opacity-60">
+              Un gestionnaire peut vous accorder des droits supplémentaires.
+            </p>
+          }
+        </div>
+      }
+
+      <form
+        [formGroup]="profileForm"
+        (ngSubmit)="saveProfile()"
+        class="flex flex-col gap-2"
+        novalidate
+      >
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Adresse e-mail</legend>
+          <input
+            type="email"
+            class="input w-full"
+            formControlName="email"
+            [class.input-error]="
+              (profileForm.controls.email.touched && profileForm.controls.email.invalid) ||
+              profileErrorsFor('email').length > 0
+            "
+          />
+          <p class="label">Elle sert à réinitialiser votre mot de passe.</p>
+          @if (profileForm.controls.email.touched && profileForm.controls.email.invalid) {
+            <p class="label text-error">Saisissez une adresse e-mail valide.</p>
+          }
+          @for (message of profileErrorsFor('email'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <div class="grid gap-2 sm:grid-cols-2">
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Prénom</legend>
+            <input type="text" class="input w-full" formControlName="first_name" />
+          </fieldset>
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Nom</legend>
+            <input type="text" class="input w-full" formControlName="last_name" />
+          </fieldset>
+        </div>
+
+        <div class="card-actions justify-end">
+          <button type="submit" class="btn btn-primary" [disabled]="savingProfile()">
+            @if (savingProfile()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+            Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 shadow lg:self-start">
+    <form
+      [formGroup]="passwordForm"
+      (ngSubmit)="changePassword()"
+      class="card-body gap-2"
+      novalidate
+    >
+      <h2 class="card-title">Changer le mot de passe</h2>
+      <p class="text-sm opacity-70">
+        Vous serez déconnecté de tous vos appareils après le changement.
+      </p>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Mot de passe actuel</legend>
+        <input
+          type="password"
+          class="input w-full"
+          formControlName="old_password"
+          autocomplete="current-password"
+          [class.input-error]="
+            (passwordForm.controls.old_password.touched &&
+              passwordForm.controls.old_password.invalid) ||
+            passwordErrorsFor('old_password').length > 0
+          "
+        />
+        @for (message of passwordErrorsFor('old_password'); track message) {
+          <p class="label text-error">{{ message }}</p>
+        }
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Nouveau mot de passe</legend>
+        <input
+          type="password"
+          class="input w-full"
+          formControlName="new_password"
+          autocomplete="new-password"
+          [class.input-error]="
+            (passwordForm.controls.new_password.touched &&
+              passwordForm.controls.new_password.invalid) ||
+            passwordErrorsFor('new_password').length > 0
+          "
+        />
+        <p class="label">{{ passwordMinLength }} caractères minimum.</p>
+        @if (
+          passwordForm.controls.new_password.touched && passwordForm.controls.new_password.invalid
+        ) {
+          <p class="label text-error">
+            Le mot de passe doit faire au moins {{ passwordMinLength }} caractères.
+          </p>
+        }
+        @for (message of passwordErrorsFor('new_password'); track message) {
+          <p class="label text-error">{{ message }}</p>
+        }
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Confirmer le nouveau mot de passe</legend>
+        <input
+          type="password"
+          class="input w-full"
+          formControlName="confirm"
+          autocomplete="new-password"
+          [class.input-error]="
+            passwordForm.controls.confirm.touched && passwordForm.errors?.['mismatch']
+          "
+        />
+        @if (passwordForm.controls.confirm.touched && passwordForm.errors?.['mismatch']) {
+          <p class="label text-error">Les mots de passe ne correspondent pas.</p>
+        }
+      </fieldset>
+
+      <div class="card-actions justify-end">
+        <button type="submit" class="btn btn-primary" [disabled]="savingPassword()">
+          @if (savingPassword()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          Changer le mot de passe
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
