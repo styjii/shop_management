@@ -13,9 +13,6 @@ describe('authInterceptor', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    sessionStorage.clear();
-    sessionStorage.setItem('access', 'old');
-    sessionStorage.setItem('refresh', 'r1');
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
@@ -24,6 +21,7 @@ describe('authInterceptor', () => {
       ],
     });
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    TestBed.inject(AuthService).startSession('old');
     client = TestBed.inject(HttpClient);
     http = TestBed.inject(HttpTestingController);
   });
@@ -58,7 +56,7 @@ describe('authInterceptor', () => {
     client.get(`${api}/products/`).subscribe(next);
 
     http.expectOne(`${api}/products/`).flush({}, unauthorized);
-    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'new', refresh: 'r2' });
+    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'new' });
 
     const retry = http.expectOne(`${api}/products/`);
     expect(retry.request.headers.get('Authorization')).toBe('Bearer new');
@@ -72,7 +70,7 @@ describe('authInterceptor', () => {
 
     http.expectOne(`${api}/products/`).flush({}, unauthorized);
     http.expectOne(`${api}/categories/`).flush({}, unauthorized);
-    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'new', refresh: 'r2' }); // expectOne: exactly one
+    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'new' }); // expectOne: exactly one
 
     http.expectOne(`${api}/products/`).flush({});
     http.expectOne(`${api}/categories/`).flush({});
@@ -90,12 +88,22 @@ describe('authInterceptor', () => {
     expect(TestBed.inject(AuthService).isLoggedIn()).toBe(false);
   });
 
+  it('does not try to refresh when nobody is logged in', () => {
+    TestBed.inject(AuthService).isLoggedIn.set(false);
+    const error = vi.fn();
+    client.get(`${api}/products/`).subscribe({ error });
+
+    http.expectOne(`${api}/products/`).flush({}, unauthorized);
+    http.expectNone(`${api}/auth/refresh/`);
+    expect(error).toHaveBeenCalled();
+  });
+
   it('does not log out when the retried request fails for another reason', () => {
     const error = vi.fn();
     client.get(`${api}/products/`).subscribe({ error });
 
     http.expectOne(`${api}/products/`).flush({}, unauthorized);
-    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'new', refresh: 'r2' });
+    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'new' });
     http
       .expectOne(`${api}/products/`)
       .flush({ detail: 'Interdit' }, { status: 403, statusText: 'Forbidden' });

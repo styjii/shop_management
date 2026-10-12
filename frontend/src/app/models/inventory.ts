@@ -141,7 +141,11 @@ export type MovementKind = 'IN' | 'OUT' | 'ADJ';
 export const MOVEMENT_KINDS: { value: MovementKind; label: string; hint: string }[] = [
   { value: 'IN', label: 'Entrée', hint: 'Ajoute des unités au stock (livraison, retour).' },
   { value: 'OUT', label: 'Sortie', hint: 'Retire des unités du stock (casse, perte, don).' },
-  { value: 'ADJ', label: 'Ajustement', hint: 'Remplace le stock par la quantité comptée.' },
+  {
+    value: 'ADJ',
+    label: 'Ajustement',
+    hint: 'Remplace le stock par la quantité comptée (0 permis).',
+  },
 ];
 
 export interface StockMovement {

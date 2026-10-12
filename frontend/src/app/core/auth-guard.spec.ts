@@ -24,7 +24,6 @@ describe('guards', () => {
   const urlOf = (result: unknown) => (result as UrlTree).toString();
 
   beforeEach(() => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });

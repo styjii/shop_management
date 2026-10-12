@@ -100,6 +100,35 @@ describe('Movements', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Choisissez un produit.');
   });
 
+  it('allows an adjustment to 0 but refuses an empty entry or exit', async () => {
+    const { fixture } = await setup();
+    const { form, minQuantity } = fixture.componentInstance;
+
+    form.setValue({ product: 1, kind: 'IN', quantity: 0, reason: '' });
+    expect(form.controls.quantity.invalid).toBe(true);
+    expect(minQuantity()).toBe(1);
+
+    form.controls.kind.setValue('ADJ');
+    expect(minQuantity()).toBe(0);
+    expect(form.controls.quantity.valid).toBe(true);
+
+    form.controls.kind.setValue('OUT');
+    expect(form.controls.quantity.invalid).toBe(true);
+  });
+
+  it('sends an adjustment to 0', async () => {
+    const { fixture } = await setup();
+    const component = fixture.componentInstance;
+    component.form.setValue({ product: 1, kind: 'ADJ', quantity: 0, reason: 'Inventaire' });
+    component.submit();
+
+    const request = http.expectOne(`${api}/movements/`);
+    expect(request.request.body).toMatchObject({ kind: 'ADJ', quantity: 0 });
+    request.flush(makeMovement({ kind: 'ADJ', quantity: 0 }));
+    http.expectOne(`${api}/products/1/`).flush({ ...water, quantity: 0 });
+    expect(component.selected()?.quantity).toBe(0);
+  });
+
   it('records a movement, then refreshes the stock and the history', async () => {
     const { fixture } = await setup();
     const component = fixture.componentInstance;

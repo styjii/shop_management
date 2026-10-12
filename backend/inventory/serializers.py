@@ -41,6 +41,14 @@ class StockMovementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at"]
 
+    def validate(self, attrs):
+        # An inventory adjustment may set the stock to 0; entries and exits may not be empty.
+        if attrs["kind"] != StockMovement.Kind.ADJ and attrs["quantity"] < 1:
+            raise serializers.ValidationError(
+                {"quantity": "La quantité doit être d'au moins 1."}
+            )
+        return attrs
+
     @transaction.atomic
     def create(self, validated_data):
         # The movement also updates the product stock, atomically.

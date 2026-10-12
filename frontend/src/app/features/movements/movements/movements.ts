@@ -43,6 +43,8 @@ export class Movements {
   readonly productSearch = new FormControl('', { nonNullable: true });
   readonly saving = signal(false);
   readonly serverErrors = signal<Record<string, string[]>>({});
+  /** Entries and exits move at least one unit; an inventory adjustment may set the stock to 0. */
+  readonly minQuantity = signal(1);
   readonly generalError = signal<string | null>(null);
 
   readonly form = new FormGroup({
@@ -73,6 +75,13 @@ export class Movements {
     this.productSearch.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((search) => this.searchProducts(search.trim()));
+
+    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
+      const min = kind === 'ADJ' ? 0 : 1;
+      this.minQuantity.set(min);
+      this.form.controls.quantity.setValidators([Validators.required, Validators.min(min)]);
+      this.form.controls.quantity.updateValueAndValidity();
+    });
 
     this.form.controls.product.valueChanges.pipe(takeUntilDestroyed()).subscribe((id) => {
       this.selected.set(this.candidates().find((product) => product.id === id) ?? null);

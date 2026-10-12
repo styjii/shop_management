@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../environments/environment';
 import { App } from './app';
+import { AuthService } from './core/auth';
 import { makeCurrentUser, makeManager } from '../testing/factories';
 
 describe('App', () => {
@@ -15,8 +16,6 @@ describe('App', () => {
     return TestBed.inject(HttpTestingController);
   };
 
-  beforeEach(() => sessionStorage.clear());
-
   it('shows no navigation bar when logged out', async () => {
     setup();
     const fixture = TestBed.createComponent(App);
@@ -27,8 +26,8 @@ describe('App', () => {
   });
 
   it('shows the navigation bar with the user name and role when logged in', async () => {
-    sessionStorage.setItem('access', 'token');
     const http = setup();
+    TestBed.inject(AuthService).startSession('token');
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
@@ -44,8 +43,8 @@ describe('App', () => {
   });
 
   it('shows the manager links only to managers', async () => {
-    sessionStorage.setItem('access', 'token');
     const http = setup();
+    TestBed.inject(AuthService).startSession('token');
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     http.expectOne(`${environment.apiUrl}/auth/me/`).flush(makeCurrentUser());
@@ -58,8 +57,8 @@ describe('App', () => {
   });
 
   it('shows each management link according to the individual rights', async () => {
-    sessionStorage.setItem('access', 'token');
     const http = setup();
+    TestBed.inject(AuthService).startSession('token');
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     http
@@ -74,8 +73,8 @@ describe('App', () => {
   });
 
   it('shows the user management link to managers', async () => {
-    sessionStorage.setItem('access', 'token');
     const http = setup();
+    TestBed.inject(AuthService).startSession('token');
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     http.expectOne(`${environment.apiUrl}/auth/me/`).flush(makeManager());

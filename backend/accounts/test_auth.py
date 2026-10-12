@@ -4,18 +4,63 @@ from django.contrib.auth.models import User
 from django.core import mail
 from django.test import override_settings
 
+from core.views import REFRESH_COOKIE
+
 from .support import NEW_PASSWORD, PASSWORD, AccountsTestCase
 
 
 class LoginTests(AccountsTestCase):
-    def test_login_refresh_and_logout(self):
+    def test_login_returns_the_access_token_and_sets_an_httponly_refresh_cookie(self):
         login = self.login("vendeur")
         self.assertEqual(login.status_code, 200)
-        refresh = login.data["refresh"]
-        logout = self.client.post("/api/auth/logout/", {"refresh": refresh}, format="json")
+        self.assertIn("access", login.data)
+        self.assertNotIn("refresh", login.data)  # the refresh token never reaches JavaScript
+        cookie = self.client.cookies[REFRESH_COOKIE]
+        self.assertTrue(cookie["httponly"])
+        self.assertEqual(cookie["samesite"], "Strict")
+        self.assertEqual(cookie["path"], "/api/auth/")
+
+    def test_refresh_uses_the_cookie_and_rotates_it(self):
+        self.login("vendeur")
+        first = self.refresh_cookie()
+        response = self.client.post("/api/auth/refresh/", {}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+        self.assertNotIn("refresh", response.data)
+        self.assertNotEqual(self.refresh_cookie(), first)
+        # the previous refresh token has been revoked by the rotation
+        self.assertEqual(self.refresh_with(first).status_code, 401)
+
+    def test_refresh_ignores_a_token_sent_in_the_body(self):
+        self.login("vendeur")
+        token = self.refresh_cookie()
+        self.client.cookies.clear()
+        response = self.client.post("/api/auth/refresh/", {"refresh": token}, format="json")
+        self.assertEqual(response.status_code, 401)
+
+    def test_refresh_without_cookie_or_with_garbage_is_refused_and_clears_the_cookie(self):
+        self.assertEqual(self.client.post("/api/auth/refresh/", {}, format="json").status_code, 401)
+        response = self.refresh_with("not-a-token")
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.cookies[REFRESH_COOKIE]["max-age"], 0)
+
+    def test_logout_revokes_the_refresh_token_and_clears_the_cookie(self):
+        self.login("vendeur")
+        token = self.refresh_cookie()
+        logout = self.client.post("/api/auth/logout/", {}, format="json")
         self.assertEqual(logout.status_code, 200)
-        again = self.client.post("/api/auth/refresh/", {"refresh": refresh}, format="json")
-        self.assertEqual(again.status_code, 401)
+        self.assertEqual(logout.cookies[REFRESH_COOKIE]["max-age"], 0)
+        self.assertEqual(self.refresh_with(token).status_code, 401)
+
+    def test_logout_always_succeeds(self):
+        self.assertEqual(self.client.post("/api/auth/logout/", {}, format="json").status_code, 200)
+
+    def test_a_deactivated_user_cannot_refresh(self):
+        self.login("vendeur")
+        token = self.refresh_cookie()
+        self.seller.is_active = False
+        self.seller.save()
+        self.assertEqual(self.refresh_with(token).status_code, 401)
 
     def test_auth_errors_are_in_french(self):
         bad_login = self.login("vendeur", "wrong")
@@ -96,14 +141,14 @@ class PasswordResetTests(AccountsTestCase):
         )
 
     def test_the_link_changes_the_password_once_and_revokes_sessions(self):
-        refresh = self.login("vendeur").data["refresh"]
+        self.login("vendeur")
+        refresh = self.refresh_cookie()
         uid, token = self.reset_credentials()
 
         self.assertEqual(self.confirm(uid, token).status_code, 200)
         self.assertEqual(self.login("vendeur", NEW_PASSWORD).status_code, 200)
         self.assertEqual(self.login("vendeur", PASSWORD).status_code, 401)
-        old_session = self.client.post("/api/auth/refresh/", {"refresh": refresh}, format="json")
-        self.assertEqual(old_session.status_code, 401)
+        self.assertEqual(self.refresh_with(refresh).status_code, 401)
 
         reuse = self.confirm(uid, token, "Autre-Mdp-54321")
         self.assertEqual(reuse.status_code, 400)
@@ -134,14 +179,14 @@ class ChangePasswordTests(AccountsTestCase):
 
     def test_changes_the_password_and_revokes_refresh_tokens(self):
         tokens = self.login("vendeur").data
+        old_refresh = self.refresh_cookie()
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
         self.assertEqual(self.change(PASSWORD, NEW_PASSWORD).status_code, 200)
 
         self.client.credentials()
         self.assertEqual(self.login("vendeur", PASSWORD).status_code, 401)
         self.assertEqual(self.login("vendeur", NEW_PASSWORD).status_code, 200)
-        refresh = self.client.post("/api/auth/refresh/", {"refresh": tokens["refresh"]}, format="json")
-        self.assertEqual(refresh.status_code, 401)
+        self.assertEqual(self.refresh_with(old_refresh).status_code, 401)
 
     def test_rejects_a_wrong_current_password_a_weak_or_identical_new_one(self):
         self.client.force_authenticate(self.seller)

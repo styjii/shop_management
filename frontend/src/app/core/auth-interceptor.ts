@@ -23,7 +23,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(request).pipe(
     catchError((err: unknown) => {
       const expired = err instanceof HttpErrorResponse && err.status === 401;
-      if (expired && isApi && !isPublic && auth.refreshToken) {
+      if (expired && isApi && !isPublic && auth.isLoggedIn()) {
         return auth.refresh().pipe(
           catchError((refreshError) => {
             auth.logout();

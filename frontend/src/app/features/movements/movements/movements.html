@@ -61,7 +61,7 @@
           <legend class="fieldset-legend">Quantité</legend>
           <input
             type="number"
-            min="1"
+            [attr.min]="minQuantity()"
             step="1"
             class="input w-full"
             formControlName="quantity"
@@ -71,7 +71,7 @@
             "
           />
           @if (form.controls.quantity.touched && form.controls.quantity.invalid) {
-            <p class="label text-error">La quantité doit être d'au moins 1.</p>
+            <p class="label text-error">La quantité doit être d'au moins {{ minQuantity() }}.</p>
           }
           @for (message of errorsFor('quantity'); track message) {
             <p class="label text-error">{{ message }}</p>

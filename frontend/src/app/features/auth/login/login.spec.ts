@@ -12,7 +12,6 @@ describe('Login', () => {
   let navigate: ReturnType<typeof vi.spyOn>;
 
   const setup = () => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [Login],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -39,7 +38,7 @@ describe('Login', () => {
     fixture.componentInstance.form.setValue({ username: 'admin', password: 'secret' });
     fixture.componentInstance.submit();
 
-    http.expectOne(`${api}/auth/token/`).flush({ access: 'a', refresh: 'r' });
+    http.expectOne(`${api}/auth/token/`).flush({ access: 'a' });
     http.expectOne(`${api}/auth/me/`).flush(makeManager({ username: 'admin' }));
 
     expect(navigate).toHaveBeenCalledWith(['/']);

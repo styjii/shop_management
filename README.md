@@ -43,7 +43,7 @@ Convention du projet : le **code reste en anglais**, les **sorties** (administra
 
 ## Fonctionnalités
 
-- Authentification par jetons **JWT** (access + refresh, rotation et liste noire), avec messages d'erreur en français.
+- Authentification par jetons **JWT** (rotation et liste noire), avec messages d'erreur en français : le jeton d'accès reste en mémoire, le jeton de rafraîchissement est dans un cookie `HttpOnly` illisible par JavaScript.
 - Rôles **Gestionnaire** et **Vendeur** (groupes Django) et **droits individuels** que le gestionnaire accorde à un vendeur : gérer le catalogue, gérer le stock, voir toutes les ventes.
 - **Gestion des utilisateurs** par les gestionnaires : création, modification, rôle et droits, désactivation, mot de passe temporaire, suppression.
 - **Inscription libre** : chacun peut demander un compte, qui reste inactif jusqu'à l'approbation d'un gestionnaire.
@@ -116,7 +116,8 @@ shop_management/
 │   │   ├── asgi.py
 │   │   ├── exceptions.py          # messages d'erreur JWT en français
 │   │   ├── settings.py
-│   │   ├── urls.py                # routes + connexion JWT
+│   │   ├── urls.py                # routes
+│   │   ├── auth_views.py          # connexion, rafraîchissement, déconnexion (cookie HttpOnly)
 │   │   └── wsgi.py
 │   ├── accounts/                  # comptes, rôles et droits
 │   │   ├── management/commands/
@@ -313,7 +314,7 @@ Depuis le tableau de bord ou la liste des produits, le lien « Réapprovisionner
 | Méthode | Endpoint | Description | Accès |
 |---|---|---|---|
 | POST | `/api/auth/token/` | Connexion (access + refresh), 5 essais par minute | Public (limité) |
-| POST | `/api/auth/refresh/` | Nouveau jeton access | Refresh valide |
+| POST | `/api/auth/refresh/` | Nouveau jeton access (lit le cookie de rafraîchissement) | Cookie valide |
 | POST | `/api/auth/logout/` | Invalide le refresh | Refresh valide |
 | GET / PATCH | `/api/auth/me/` | Profil, rôle et droits ; modification de l'e-mail et du nom | Connecté |
 | POST | `/api/auth/change-password/` | Changer son mot de passe (ferme toutes les sessions) | Connecté |

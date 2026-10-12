@@ -1,17 +1,20 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Capability, CurrentUser, ProfilePayload, RegisterPayload } from '../models/inventory';
 
-interface Tokens {
+interface AccessToken {
   access: string;
-  refresh: string;
 }
 
-const ACCESS_KEY = 'access';
-const REFRESH_KEY = 'refresh';
+// Token storage, by design:
+// - the access token (15 min) lives in memory only: it is gone when the tab closes or reloads;
+// - the refresh token is an HttpOnly cookie set by the API: JavaScript can never read it, so an
+//   XSS flaw cannot steal a long-lived session. The browser sends it to /api/auth/* only
+//   (withCredentials), and the app restores the session at startup with restoreSession().
+const WITH_COOKIE = { withCredentials: true };
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -20,7 +23,9 @@ export class AuthService {
   private api = environment.apiUrl;
   private refreshing$: Observable<string> | null = null;
 
-  readonly isLoggedIn = signal(!!sessionStorage.getItem(ACCESS_KEY));
+  private access: string | null = null;
+
+  readonly isLoggedIn = signal(false);
   readonly user = signal<CurrentUser | null>(null);
   readonly isManager = computed(() => this.user()?.is_manager ?? false);
 
@@ -31,41 +36,45 @@ export class AuthService {
   }
 
   get accessToken() {
-    return sessionStorage.getItem(ACCESS_KEY);
-  }
-
-  get refreshToken() {
-    return sessionStorage.getItem(REFRESH_KEY);
+    return this.access;
   }
 
   login(username: string, password: string) {
     return this.http
-      .post<Tokens>(`${this.api}/auth/token/`, { username, password })
-      .pipe(tap((tokens) => this.store(tokens.access, tokens.refresh)));
+      .post<AccessToken>(`${this.api}/auth/token/`, { username, password }, WITH_COOKIE)
+      .pipe(tap((token) => this.startSession(token.access)));
   }
 
   /**
-   * Renew the access token. Concurrent calls share one request: the backend
-   * rotates and blacklists refresh tokens, so a second call would be rejected.
+   * Renew the access token with the refresh cookie. Concurrent calls share one request: the
+   * backend rotates and blacklists refresh tokens, so a second call would be rejected.
    */
   refresh(): Observable<string> {
-    const refresh = this.refreshToken;
-    if (!refresh) {
-      return throwError(() => new Error('No refresh token'));
-    }
     if (this.refreshing$) {
       return this.refreshing$;
     }
-    const request$ = this.http
-      .post<{ access: string; refresh?: string }>(`${this.api}/auth/refresh/`, { refresh })
-      .pipe(
-        tap((tokens) => this.store(tokens.access, tokens.refresh ?? refresh)),
-        map((tokens) => tokens.access),
-        finalize(() => (this.refreshing$ = null)),
-        shareReplay(1),
-      );
+    const request$ = this.http.post<AccessToken>(`${this.api}/auth/refresh/`, {}, WITH_COOKIE).pipe(
+      tap((token) => this.startSession(token.access)),
+      map((token) => token.access),
+      finalize(() => (this.refreshing$ = null)),
+      shareReplay(1),
+    );
     this.refreshing$ = request$;
     return request$;
+  }
+
+  /** At startup: is there a valid refresh cookie? Emits true and logs in when there is. */
+  restoreSession(): Observable<boolean> {
+    return this.refresh().pipe(
+      map(() => true),
+      catchError(() => of(false)),
+    );
+  }
+
+  /** Keep the access token in memory and mark the user as logged in. */
+  startSession(access: string) {
+    this.access = access;
+    this.isLoggedIn.set(true);
   }
 
   register(body: RegisterPayload) {
@@ -110,20 +119,13 @@ export class AuthService {
   }
 
   logout() {
-    const refresh = this.refreshToken;
-    if (refresh) {
-      this.http.post(`${this.api}/auth/logout/`, { refresh }).subscribe({ error: () => undefined });
-    }
-    sessionStorage.removeItem(ACCESS_KEY);
-    sessionStorage.removeItem(REFRESH_KEY);
+    // The API revokes the refresh token of the cookie and deletes the cookie.
+    this.http
+      .post(`${this.api}/auth/logout/`, {}, WITH_COOKIE)
+      .subscribe({ error: () => undefined });
+    this.access = null;
     this.isLoggedIn.set(false);
     this.user.set(null);
     void this.router.navigate(['/login']);
-  }
-
-  private store(access: string, refresh: string) {
-    sessionStorage.setItem(ACCESS_KEY, access);
-    sessionStorage.setItem(REFRESH_KEY, refresh);
-    this.isLoggedIn.set(true);
   }
 }

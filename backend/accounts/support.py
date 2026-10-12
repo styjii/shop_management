@@ -5,6 +5,8 @@ from django.core.cache import cache
 from django.core.mail.backends.base import BaseEmailBackend
 from rest_framework.test import APITestCase
 
+from core.views import REFRESH_COOKIE
+
 from .permissions import MANAGER_GROUP, SELLER_GROUP
 
 PASSWORD = "Test-1234567"
@@ -31,6 +33,15 @@ class AccountsTestCase(APITestCase):
         return self.client.post(
             "/api/auth/token/", {"username": username, "password": password}, format="json"
         )
+
+    def refresh_cookie(self):
+        """Value of the refresh cookie the API set at the last login/refresh."""
+        return self.client.cookies[REFRESH_COOKIE].value
+
+    def refresh_with(self, token):
+        """Call the refresh endpoint as a browser holding this refresh cookie."""
+        self.client.cookies[REFRESH_COOKIE] = token
+        return self.client.post("/api/auth/refresh/", {}, format="json")
 
 
 class BrokenBackend(BaseEmailBackend):

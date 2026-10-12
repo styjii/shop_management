@@ -74,9 +74,9 @@ class StockMovement(models.Model):
         verbose_name="produit",
     )
     kind = models.CharField("type de mouvement", max_length=3, choices=Kind.choices)
-    quantity = models.PositiveIntegerField(
-        "quantité", validators=[MinValueValidator(1)]
-    )
+    # IN/OUT must move at least one unit; an ADJ is the counted stock and may be 0
+    # (rule enforced by the serializer and by the CheckConstraint below).
+    quantity = models.PositiveIntegerField("quantité")
     reason = models.CharField("motif", max_length=200, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -90,6 +90,12 @@ class StockMovement(models.Model):
         verbose_name = "mouvement de stock"
         verbose_name_plural = "mouvements de stock"
         ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=1) | models.Q(kind="ADJ"),
+                name="movement_quantity_positive_unless_adjustment",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.Kind(self.kind).label} : {self.quantity} × {self.product}"

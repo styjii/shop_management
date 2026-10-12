@@ -15,7 +15,6 @@ describe('Account', () => {
   const setup = async (
     capabilities: ('manage_stock' | 'manage_catalog' | 'view_all_sales')[] = [],
   ) => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [Account],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -85,7 +84,7 @@ describe('Account', () => {
     http.expectOne(`${api}/auth/change-password/`).flush({ detail: 'Mot de passe modifié.' });
     expect(TestBed.inject(AuthService).isLoggedIn()).toBe(false);
     expect(navigate).toHaveBeenCalledWith(['/login']);
-    http.match(`${api}/auth/logout/`); // no refresh token stored: nothing to blacklist
+    http.match(`${api}/auth/logout/`); // the logout call revokes the refresh cookie
   });
 
   it('refuses a mismatching confirmation without calling the API', async () => {

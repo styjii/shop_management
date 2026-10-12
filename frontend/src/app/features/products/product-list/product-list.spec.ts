@@ -20,7 +20,6 @@ describe('ProductList', () => {
     http.match((r) => r.url === `${api}/products/` && r.method === 'GET');
 
   const setup = async (manager = false) => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [ProductList],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -141,7 +140,6 @@ describe('ProductList', () => {
   });
 
   it('gives the stock link without the catalog buttons to a seller who manages the stock', async () => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [ProductList],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],

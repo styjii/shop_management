@@ -106,7 +106,8 @@ class UserManagementTests(AccountsTestCase):
 
     def test_sets_a_new_password_and_revokes_the_sessions(self):
         self.client.force_authenticate(None)
-        refresh = self.login("vendeur").data["refresh"]
+        self.login("vendeur")
+        refresh = self.refresh_cookie()
         self.client.force_authenticate(self.manager)
 
         response = self.client.post(
@@ -114,8 +115,7 @@ class UserManagementTests(AccountsTestCase):
         self.assertEqual(response.status_code, 200)
         self.client.force_authenticate(None)
         self.assertEqual(self.login("vendeur", NEW_PASSWORD).status_code, 200)
-        self.assertEqual(
-            self.client.post("/api/auth/refresh/", {"refresh": refresh}, format="json").status_code, 401)
+        self.assertEqual(self.refresh_with(refresh).status_code, 401)
 
     def test_set_password_applies_the_password_rules(self):
         response = self.client.post(

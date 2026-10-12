@@ -181,6 +181,11 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = get_env_list("CORS_ALLOWED_ORIGINS", "http://localhost:4200")
+# The refresh token travels in an HttpOnly cookie: the allowed origins above (never "*")
+# may send credentials. In production the app and the API share one origin (Nginx).
+CORS_ALLOW_CREDENTIALS = True
+# Cookie `Secure` flag (HTTPS only) outside development; plain HTTP is needed on localhost.
+AUTH_COOKIE_SECURE = not DEBUG
 
 # ---------------------------------------------------------------------------
 # Accounts: registration, password reset e-mails

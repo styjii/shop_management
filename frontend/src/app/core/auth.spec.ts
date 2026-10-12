@@ -13,7 +13,6 @@ describe('AuthService', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
@@ -23,28 +22,31 @@ describe('AuthService', () => {
 
   afterEach(() => http.verify());
 
-  it('stores the tokens after a login', () => {
+  it('keeps the access token in memory after a login and never stores a token in the browser', () => {
     auth.login('admin', 'secret').subscribe();
     const request = http.expectOne(`${api}/auth/token/`);
     expect(request.request.body).toEqual({ username: 'admin', password: 'secret' });
-    request.flush({ access: 'a1', refresh: 'r1' });
+    expect(request.request.withCredentials).toBe(true); // the refresh cookie is set by the API
+    request.flush({ access: 'a1' });
 
     expect(auth.isLoggedIn()).toBe(true);
     expect(auth.accessToken).toBe('a1');
-    expect(auth.refreshToken).toBe('r1');
+    expect(sessionStorage.length).toBe(0);
+    expect(localStorage.length).toBe(0);
   });
 
-  it('clears the session, blacklists the refresh token and goes to /login on logout', () => {
-    sessionStorage.setItem('access', 'a1');
-    sessionStorage.setItem('refresh', 'r1');
+  it('clears the session, revokes the refresh cookie and goes to /login on logout', () => {
+    auth.startSession('a1');
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     auth.logout();
 
-    expect(http.expectOne(`${api}/auth/logout/`).request.body).toEqual({ refresh: 'r1' });
+    const request = http.expectOne(`${api}/auth/logout/`);
+    expect(request.request.withCredentials).toBe(true);
     expect(auth.isLoggedIn()).toBe(false);
     expect(auth.accessToken).toBeNull();
     expect(navigate).toHaveBeenCalledWith(['/login']);
+    request.flush({});
   });
 
   it('loads the current user once and exposes the manager role', async () => {
@@ -57,20 +59,35 @@ describe('AuthService', () => {
   });
 
   it('shares one refresh request between concurrent callers', async () => {
-    sessionStorage.setItem('access', 'old');
-    sessionStorage.setItem('refresh', 'r1');
+    auth.startSession('old');
 
     const first = firstValueFrom(auth.refresh());
     const second = firstValueFrom(auth.refresh());
-    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'new', refresh: 'r2' });
+    const request = http.expectOne(`${api}/auth/refresh/`); // exactly one request
+    expect(request.request.withCredentials).toBe(true);
+    request.flush({ access: 'new' });
 
     expect(await first).toBe('new');
     expect(await second).toBe('new');
-    expect(auth.refreshToken).toBe('r2');
+    expect(auth.accessToken).toBe('new');
   });
 
-  it('fails to refresh without a refresh token', async () => {
-    await expect(firstValueFrom(auth.refresh())).rejects.toThrow('No refresh token');
+  it('restores the session at startup when the refresh cookie is valid', async () => {
+    const restored = firstValueFrom(auth.restoreSession());
+    http.expectOne(`${api}/auth/refresh/`).flush({ access: 'a2' });
+
+    expect(await restored).toBe(true);
+    expect(auth.isLoggedIn()).toBe(true);
+    expect(auth.accessToken).toBe('a2');
+  });
+
+  it('stays logged out at startup when there is no valid refresh cookie', async () => {
+    const restored = firstValueFrom(auth.restoreSession());
+    http.expectOne(`${api}/auth/refresh/`).flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(await restored).toBe(false);
+    expect(auth.isLoggedIn()).toBe(false);
+    expect(auth.accessToken).toBeNull();
   });
 
   it('can() gives managers every right and sellers only the granted ones', () => {

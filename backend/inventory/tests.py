@@ -192,6 +192,33 @@ class StockMovementTests(InventoryAPITestCase):
         self.water.refresh_from_db()
         self.assertEqual(self.water.quantity, 8)
 
+    def test_adjustment_can_set_stock_to_zero(self):
+        self.assertEqual(self.move("ADJ", 0).status_code, 201)
+        self.water.refresh_from_db()
+        self.assertEqual(self.water.quantity, 0)
+
+    def test_in_and_out_refuse_a_zero_quantity(self):
+        for kind in ("IN", "OUT"):
+            with self.subTest(kind=kind):
+                response = self.move(kind, 0)
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("quantity", response.data)
+        self.water.refresh_from_db()
+        self.assertEqual(self.water.quantity, 10)
+
+    def test_negative_quantity_is_refused(self):
+        self.assertEqual(self.move("ADJ", -1).status_code, 400)
+
+    def test_database_refuses_an_empty_entry(self):
+        from django.db import IntegrityError, transaction
+
+        from .models import StockMovement
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            StockMovement.objects.create(
+                product=self.water, kind="IN", quantity=0, created_by=self.manager
+            )
+
     def test_out_cannot_make_stock_negative(self):
         response = self.move("OUT", 999)
         self.assertEqual(response.status_code, 400)
