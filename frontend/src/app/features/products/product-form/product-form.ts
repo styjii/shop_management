@@ -48,6 +48,8 @@ export class ProductForm {
   readonly generalError = signal<string | null>(null);
   readonly saving = signal(false);
   readonly currentImage = signal<string | null>(null);
+  /** Stock of the edited product: shown read-only, it only changes through stock movements. */
+  readonly currentStock = signal<number | null>(null);
   readonly newCategory = new FormControl('', { nonNullable: true });
 
   private imageFile: File | null = null;
@@ -65,10 +67,6 @@ export class ProductForm {
     barcode: new FormControl('', { nonNullable: true, validators: [barcodeValidator] }),
     supplier: new FormControl<number | null>(null),
     price: new FormControl(0, {
-      nonNullable: true,
-      validators: [Validators.required, Validators.min(0)],
-    }),
-    quantity: new FormControl(0, {
       nonNullable: true,
       validators: [Validators.required, Validators.min(0)],
     }),
@@ -98,6 +96,7 @@ export class ProductForm {
       this.products.get(this.id).subscribe({
         next: (product) => {
           this.currentImage.set(product.image);
+          this.currentStock.set(product.quantity);
           this.form.patchValue({
             sku: product.sku,
             name: product.name,
@@ -105,7 +104,6 @@ export class ProductForm {
             barcode: product.barcode ?? '',
             supplier: product.supplier,
             price: Number(product.price),
-            quantity: product.quantity,
             low_stock_threshold: product.low_stock_threshold,
             is_active: product.is_active,
           });

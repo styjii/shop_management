@@ -51,7 +51,8 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ["category", "is_active"]
     list_select_related = ["category"]
     search_fields = ["sku", "name", "barcode"]
-    readonly_fields = ["created_at", "updated_at"]
+    # The stock moves through stock movements only (traceability): never edited by hand.
+    readonly_fields = ["quantity", "created_at", "updated_at"]
     fieldsets = [
         ("Identification", {"fields": ["sku", "name", "category", "barcode", "supplier", "image"]}),
         ("Prix et stock", {"fields": ["price", "quantity", "low_stock_threshold"]}),

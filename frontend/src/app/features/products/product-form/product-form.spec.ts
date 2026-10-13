@@ -42,7 +42,6 @@ describe('ProductForm', () => {
       name: 'Eau',
       category: 1,
       price: 1.5,
-      quantity: 10,
       low_stock_threshold: 5,
       barcode: '',
       supplier: null,
@@ -69,7 +68,6 @@ describe('ProductForm', () => {
       name: 'Eau',
       category: 1,
       price: 1.5,
-      quantity: 10,
       low_stock_threshold: 5,
       barcode: '',
       supplier: null,
@@ -114,6 +112,26 @@ describe('ProductForm', () => {
     const request = http.expectOne(`${api}/products/3/`);
     expect(request.request.method).toBe('PUT');
     request.flush(makeProduct({ id: 3 }));
+  });
+
+  it('shows the stock read-only when editing and never sends it', () => {
+    const fixture = setup('3');
+    http.expectOne(`${api}/products/3/`).flush(makeProduct({ id: 3, quantity: 42 }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.currentStock()).toBe(42);
+    expect('quantity' in fixture.componentInstance.form.controls).toBe(false);
+
+    fixture.componentInstance.save();
+    const request = http.expectOne(`${api}/products/3/`);
+    expect('quantity' in (request.request.body as object)).toBe(false);
+    request.flush(makeProduct({ id: 3 }));
+  });
+
+  it('does not show a stock field when creating a product', () => {
+    const fixture = setup();
+    expect(fixture.componentInstance.currentStock()).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Quantité en stock');
   });
 
   it('adds a category on the fly and selects it', () => {

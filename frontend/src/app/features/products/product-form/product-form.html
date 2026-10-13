@@ -158,26 +158,15 @@
       }
     </fieldset>
 
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">Quantité en stock</legend>
-      <input
-        type="number"
-        min="0"
-        step="1"
-        class="input w-full"
-        formControlName="quantity"
-        [class.input-error]="
-          (form.controls.quantity.touched && form.controls.quantity.invalid) ||
-          errorsFor('quantity').length > 0
-        "
-      />
-      @if (form.controls.quantity.touched && form.controls.quantity.invalid) {
-        <p class="label text-error">La quantité doit être positive ou nulle.</p>
-      }
-      @for (message of errorsFor('quantity'); track message) {
-        <p class="label text-error">{{ message }}</p>
-      }
-    </fieldset>
+    @if (currentStock() !== null) {
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Quantité en stock</legend>
+        <input type="number" class="input w-full" [value]="currentStock()" disabled />
+        <p class="label">
+          Le stock se modifie uniquement par un mouvement de stock (entrée, sortie ou ajustement).
+        </p>
+      </fieldset>
+    }
 
     <fieldset class="fieldset">
       <legend class="fieldset-legend">Seuil d'alerte</legend>

@@ -13,7 +13,6 @@ describe('ProductService', () => {
     name: 'Eau',
     category: 1,
     price: 1.5,
-    quantity: 10,
     low_stock_threshold: 5,
     barcode: '',
     supplier: null,

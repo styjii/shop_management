@@ -32,7 +32,6 @@ export interface ProductPayload {
   name: string;
   category: number | null;
   price: number;
-  quantity: number;
   low_stock_threshold: number;
   barcode: string;
   supplier: number | null;

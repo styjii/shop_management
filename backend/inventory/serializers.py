@@ -47,6 +47,9 @@ class ProductSerializer(serializers.ModelSerializer):
             "barcode", "supplier", "supplier_name",
             "image", "is_active",
         ]
+        # The stock is never written through the product API: it only moves through sales,
+        # purchase order receptions and stock movements (right "manage_stock", traced).
+        read_only_fields = ["quantity"]
         extra_kwargs = {"barcode": {"allow_blank": True}}
 
     def validate_barcode(self, value):

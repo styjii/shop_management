@@ -105,6 +105,8 @@ class ProductTests(InventoryAPITestCase):
             "price": "2.00", "quantity": 4, "low_stock_threshold": 2,
         }, format="json")
         self.assertEqual(response.status_code, 201)
+        # The stock cannot be set through the product API: a new product starts at 0.
+        self.assertEqual(Product.objects.get(sku="NEW-1").quantity, 0)
 
     def test_low_stock_filter_and_endpoint(self):
         self.client.force_authenticate(self.seller)
