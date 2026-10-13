@@ -36,8 +36,8 @@ Par **[styjii](https://github.com/styjii)** (username : `styjii`).
 
 **Shop Management** est une application web complète de type Mini-ERP. Elle reproduit les briques que l'on retrouve dans les logiciels d'entreprise : authentification, rôles, base relationnelle, formulaires dynamiques et tableaux filtrables.
 
-- **Backend** : API REST avec Django et Django REST Framework, base SQL. *(fonctionnel)*
-- **Frontend** : application monopage Angular 21 avec Tailwind CSS et daisyUI. *(fonctionnel)*
+- **Backend** : API REST avec Django et Django REST Framework, base SQL. _(fonctionnel)_
+- **Frontend** : application monopage Angular 21 avec Tailwind CSS et daisyUI. _(fonctionnel)_
 
 Convention du projet : le **code reste en anglais**, les **sorties** (administration, libellés, messages d'erreur) sont **en français**.
 
@@ -70,42 +70,42 @@ Les dépendances sont réparties en trois fichiers dans `requirements/`.
 
 **`base.txt`** : nécessaire pour exécuter l'application
 
-| Paquet | Version | Rôle |
-|---|---|---|
-| Django | 6.1.2 | Framework web, ORM, administration |
-| djangorestframework | 3.18.3 | API REST |
-| djangorestframework_simplejwt | 5.5.1 | Authentification JWT |
-| django-cors-headers | 4.9.0 | Autorisation CORS pour le frontend |
-| django-filter | 26.2 | Filtres de recherche |
-| pillow | 12.3.0 | Images de produits (`ImageField`) |
-| asgiref, sqlparse, PyJWT | 3.12.1, 0.6.0, 2.15.1 | Dépendances de Django et de SimpleJWT |
+| Paquet                        | Version               | Rôle                                  |
+| ----------------------------- | --------------------- | ------------------------------------- |
+| Django                        | 6.1.2                 | Framework web, ORM, administration    |
+| djangorestframework           | 3.18.3                | API REST                              |
+| djangorestframework_simplejwt | 5.5.1                 | Authentification JWT                  |
+| django-cors-headers           | 4.9.0                 | Autorisation CORS pour le frontend    |
+| django-filter                 | 26.2                  | Filtres de recherche                  |
+| pillow                        | 12.3.0                | Images de produits (`ImageField`)     |
+| asgiref, sqlparse, PyJWT      | 3.12.1, 0.6.0, 2.15.1 | Dépendances de Django et de SimpleJWT |
 
 **`dev.txt`** : développement (inclut `base.txt`)
 
-| Paquet | Version | Rôle |
-|---|---|---|
-| django-stubs, django-stubs-ext | 6.1.2 | Typage statique |
-| djangorestframework-stubs | 3.18.1 | Typage de DRF (évite les faux positifs de Pyright) |
-| types-PyYAML, typing_extensions | 6.0.12.20260906, 4.16.0 | Dépendances du typage |
-| pip-audit | | Audit des dépendances vulnérables |
+| Paquet                          | Version                 | Rôle                                               |
+| ------------------------------- | ----------------------- | -------------------------------------------------- |
+| django-stubs, django-stubs-ext  | 6.1.2                   | Typage statique                                    |
+| djangorestframework-stubs       | 3.18.1                  | Typage de DRF (évite les faux positifs de Pyright) |
+| types-PyYAML, typing_extensions | 6.0.12.20260906, 4.16.0 | Dépendances du typage                              |
+| pip-audit                       |                         | Audit des dépendances vulnérables                  |
 
 **`prod.txt`** : production (inclut `base.txt`)
 
-| Paquet | Rôle |
-|---|---|
-| gunicorn | Serveur WSGI |
+| Paquet          | Rôle                  |
+| --------------- | --------------------- |
+| gunicorn        | Serveur WSGI          |
 | psycopg[binary] | Connecteur PostgreSQL |
 
 ### Frontend
 
-| Technologie | Rôle |
-|---|---|
-| Angular 21 | Composants autonomes, signaux, formulaires réactifs, `HttpClient`, sans `zone.js` |
+| Technologie      | Rôle                                                                               |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| Angular 21       | Composants autonomes, signaux, formulaires réactifs, `HttpClient`, sans `zone.js`  |
 | TypeScript, RxJS | Typage strict, flux asynchrones (recherche instantanée, rafraîchissement du jeton) |
-| Tailwind CSS 4 | Utilitaires CSS (`@tailwindcss/postcss`) |
-| daisyUI 5 | Composants d'interface (navbar, tableaux, formulaires, modales, toasts) |
-| Vitest + jsdom | Tests unitaires (aucun navigateur requis) |
-| Prettier | Formatage du code |
+| Tailwind CSS 4   | Utilitaires CSS (`@tailwindcss/postcss`)                                           |
+| daisyUI 5        | Composants d'interface (navbar, tableaux, formulaires, modales, toasts)            |
+| Vitest + jsdom   | Tests unitaires (aucun navigateur requis)                                          |
+| Prettier         | Formatage du code                                                                  |
 
 ### Outils
 
@@ -121,7 +121,7 @@ shop_management/
 │   │   ├── exceptions.py          # messages d'erreur JWT en français
 │   │   ├── settings.py
 │   │   ├── urls.py                # routes
-│   │   ├── auth_views.py          # connexion, rafraîchissement, déconnexion (cookie HttpOnly)
+│   │   ├── views.py               # connexion, rafraîchissement, déconnexion (cookie HttpOnly)
 │   │   └── wsgi.py
 │   ├── accounts/                  # comptes, rôles et droits
 │   │   ├── management/commands/
@@ -229,24 +229,24 @@ cp .env.example .env
 set -a; source .env; set +a
 ```
 
-| Variable | Description | Exemple |
-|---|---|---|
-| `DJANGO_SECRET_KEY` | Clé secrète Django (obligatoire) | *(à générer)* |
-| `DJANGO_DEBUG` | `1` en développement, `0` en production | `1` |
-| `DJANGO_ALLOWED_HOSTS` | Hôtes autorisés, séparés par des virgules | `localhost,127.0.0.1` |
-| `CORS_ALLOWED_ORIGINS` | Origines autorisées pour le frontend | `http://localhost:4200` |
-| `CSRF_TRUSTED_ORIGINS` | Origines HTTPS de confiance (production, ex. `https://shop.example.com`) | *(optionnel)* |
-| `TRUST_PROXY_SSL` | `1` derrière Nginx (fait confiance à `X-Forwarded-Proto`, évite la boucle de redirection HTTPS) | `1` |
-| `NUM_PROXIES` | Nombre de proxys devant Django : la limitation de débit utilise alors l'IP réelle | `1` |
-| `ADMIN_URL` | Déplace l'administration (ex. `gestion-a8f3k2/`) | `admin/` |
-| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | PostgreSQL (si `DB_NAME` est vide : SQLite) | *(production)* |
-| `DJANGO_DEFAULT_ADMIN_USERNAME` | Nom du compte admin par défaut | `admin` |
-| `DJANGO_DEFAULT_ADMIN_PASSWORD` | Mot de passe du compte admin (vide : généré aléatoirement) | *(optionnel)* |
-| `REGISTRATION_ENABLED` | `1` : inscription libre (comptes à approuver), `0` : désactivée | `1` |
-| `FRONTEND_URL` | Adresse d'Angular, utilisée dans les liens des e-mails | `http://localhost:4200` |
-| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | Serveur SMTP (production) | `smtp.example.com`, `587` |
-| `DEFAULT_FROM_EMAIL` | Expéditeur des e-mails | `Shop Management <no-reply@example.com>` |
-| `DJANGO_EMAIL_BACKEND` | Pour forcer un autre moteur d'e-mails (par défaut : console en développement, SMTP sinon) | *(optionnel)* |
+| Variable                                                                              | Description                                                                                     | Exemple                                  |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `DJANGO_SECRET_KEY`                                                                   | Clé secrète Django (obligatoire)                                                                | _(à générer)_                            |
+| `DJANGO_DEBUG`                                                                        | `1` en développement, `0` en production                                                         | `1`                                      |
+| `DJANGO_ALLOWED_HOSTS`                                                                | Hôtes autorisés, séparés par des virgules                                                       | `localhost,127.0.0.1`                    |
+| `CORS_ALLOWED_ORIGINS`                                                                | Origines autorisées pour le frontend                                                            | `http://localhost:4200`                  |
+| `CSRF_TRUSTED_ORIGINS`                                                                | Origines HTTPS de confiance (production, ex. `https://shop.example.com`)                        | _(optionnel)_                            |
+| `TRUST_PROXY_SSL`                                                                     | `1` derrière Nginx (fait confiance à `X-Forwarded-Proto`, évite la boucle de redirection HTTPS) | `1`                                      |
+| `NUM_PROXIES`                                                                         | Nombre de proxys devant Django : la limitation de débit utilise alors l'IP réelle               | `1`                                      |
+| `ADMIN_URL`                                                                           | Déplace l'administration (ex. `gestion-a8f3k2/`)                                                | `admin/`                                 |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`                             | PostgreSQL (si `DB_NAME` est vide : SQLite)                                                     | _(production)_                           |
+| `DJANGO_DEFAULT_ADMIN_USERNAME`                                                       | Nom du compte admin par défaut                                                                  | `admin`                                  |
+| `DJANGO_DEFAULT_ADMIN_PASSWORD`                                                       | Mot de passe du compte admin (vide : généré aléatoirement)                                      | _(optionnel)_                            |
+| `REGISTRATION_ENABLED`                                                                | `1` : inscription libre (comptes à approuver), `0` : désactivée                                 | `1`                                      |
+| `FRONTEND_URL`                                                                        | Adresse d'Angular, utilisée dans les liens des e-mails                                          | `http://localhost:4200`                  |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | Serveur SMTP (production)                                                                       | `smtp.example.com`, `587`                |
+| `DEFAULT_FROM_EMAIL`                                                                  | Expéditeur des e-mails                                                                          | `Shop Management <no-reply@example.com>` |
+| `DJANGO_EMAIL_BACKEND`                                                                | Pour forcer un autre moteur d'e-mails (par défaut : console en développement, SMTP sinon)       | _(optionnel)_                            |
 
 Générer une clé secrète :
 
@@ -297,55 +297,55 @@ npx ng serve --host 0.0.0.0
 
 puis ajoutez l'adresse IP à `DJANGO_ALLOWED_HOSTS` et `http://<ip>:4200` à `CORS_ALLOWED_ORIGINS` dans `.env`.
 
-| Écran | Route | Accès |
-|---|---|---|
-| Connexion | `/login` | Public |
-| Tableau de bord (alertes, dernières ventes) | `/dashboard` | Tous les utilisateurs |
-| Liste des produits (recherche, filtres, tri) | `/products` | Tous les utilisateurs |
-| Caisse | `/sales` | Tous les utilisateurs |
-| Historique des ventes (détail par vente) | `/sales/history` | Tous (un vendeur ne voit que les siennes) |
-| Création et modification de produit | `/products/new`, `/products/:id/edit` | Droit « catalogue » |
-| Catégories (ajout, modification, suppression) | `/categories` | Droit « catalogue » |
-| Mouvements de stock (entrée, sortie, ajustement) | `/movements` | Droit « stock » |
-| Utilisateurs (création, approbation, rôles et droits) | `/users` | Gestionnaire |
-| Mon compte (profil, droits, mot de passe) | `/account` | Tous les utilisateurs |
-| Créer un compte, mot de passe oublié, nouveau mot de passe | `/register`, `/forgot-password`, `/reset-password` | Public |
+| Écran                                                      | Route                                              | Accès                                     |
+| ---------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------- |
+| Connexion                                                  | `/login`                                           | Public                                    |
+| Tableau de bord (alertes, dernières ventes)                | `/dashboard`                                       | Tous les utilisateurs                     |
+| Liste des produits (recherche, filtres, tri)               | `/products`                                        | Tous les utilisateurs                     |
+| Caisse                                                     | `/sales`                                           | Tous les utilisateurs                     |
+| Historique des ventes (détail par vente)                   | `/sales/history`                                   | Tous (un vendeur ne voit que les siennes) |
+| Création et modification de produit                        | `/products/new`, `/products/:id/edit`              | Droit « catalogue »                       |
+| Catégories (ajout, modification, suppression)              | `/categories`                                      | Droit « catalogue »                       |
+| Mouvements de stock (entrée, sortie, ajustement)           | `/movements`                                       | Droit « stock »                           |
+| Utilisateurs (création, approbation, rôles et droits)      | `/users`                                           | Gestionnaire                              |
+| Mon compte (profil, droits, mot de passe)                  | `/account`                                         | Tous les utilisateurs                     |
+| Créer un compte, mot de passe oublié, nouveau mot de passe | `/register`, `/forgot-password`, `/reset-password` | Public                                    |
 
 Depuis le tableau de bord ou la liste des produits, le lien « Réapprovisionner » / « Stock » ouvre `/movements?product=<id>` pour le produit concerné.
 
 ## API
 
-| Méthode | Endpoint | Description | Accès |
-|---|---|---|---|
-| POST | `/api/auth/token/` | Connexion (access + refresh), 5 essais par minute | Public (limité) |
-| POST | `/api/auth/refresh/` | Nouveau jeton access (lit le cookie de rafraîchissement) | Cookie valide |
-| POST | `/api/auth/logout/` | Invalide le refresh | Refresh valide |
-| GET / PATCH | `/api/auth/me/` | Profil, rôle et droits ; modification de l'e-mail et du nom | Connecté |
-| POST | `/api/auth/change-password/` | Changer son mot de passe (ferme toutes les sessions) | Connecté |
-| POST | `/api/auth/register/` | Demande de compte (inactif jusqu'à approbation), 5 par heure | Public (limité) |
-| POST | `/api/auth/password-reset/` | Envoie le lien de réinitialisation (réponse identique si l'adresse est inconnue) | Public (limité) |
-| POST | `/api/auth/password-reset/confirm/` | Choisit un nouveau mot de passe avec `uid` et `token` | Public (limité) |
-| GET / POST | `/api/users/` | Lister (filtres `status`, `role`, `search`) / créer un utilisateur | Gestionnaire |
-| GET / PATCH / DELETE | `/api/users/<id>/` | Détail, modification (rôle, droits, activation), suppression | Gestionnaire |
-| POST | `/api/users/<id>/set-password/` | Définir un mot de passe temporaire | Gestionnaire |
-| GET | `/api/products/` | Liste filtrée et paginée | Connecté |
-| GET | `/api/products/low-stock/` | Produits sous le seuil | Connecté |
-| POST | `/api/products/` | Créer un produit | Droit « catalogue » |
-| PUT / PATCH / DELETE | `/api/products/<id>/` | Modifier / supprimer un produit | Droit « catalogue » |
-| GET | `/api/categories/` | Liste des catégories (sans pagination) | Connecté |
-| POST / PUT / PATCH / DELETE | `/api/categories/` | Gestion des catégories | Droit « catalogue » |
-| POST | `/api/sales/` | Enregistrer une vente | Connecté |
-| GET | `/api/sales/` | Lister les ventes (les siennes, ou toutes avec le droit « toutes les ventes ») | Connecté |
-| GET / POST | `/api/movements/` | Historique et mouvements de stock | Droit « stock » |
-| GET | `/api/products/export/` | CSV des produits (mêmes filtres que la liste) | Connecté |
-| GET | `/api/products/next-barcode/` | Prochain code-barres interne libre (EAN-13, préfixe 2) | Connecté |
-| GET | `/api/sales/stats/?days=30` | Totaux, ventes par jour, meilleurs produits et catégories (1 à 365 jours) | Connecté (ses ventes, ou toutes avec le droit) |
-| GET | `/api/sales/export/` | CSV des ventes (`date_from`, `date_to` facultatifs) | Connecté (ses ventes, ou toutes avec le droit) |
-| GET | `/api/movements/export/` | CSV des mouvements | Droit « stock » |
-| GET / POST / PUT / PATCH / DELETE | `/api/suppliers/` | Fournisseurs (suppression refusée s'ils ont des bons) | Droit « stock » |
-| GET / POST / PUT / PATCH / DELETE | `/api/purchase-orders/` | Bons de commande (modifiables et supprimables en brouillon seulement) | Droit « stock » |
-| POST | `/api/purchase-orders/<id>/send/`, `receive/`, `cancel/` | Changer le statut ; `receive` met le stock à jour | Droit « stock » |
-| GET | `/api/purchase-orders/export/` | CSV des bons de commande | Droit « stock » |
+| Méthode                           | Endpoint                                                 | Description                                                                      | Accès                                          |
+| --------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
+| POST                              | `/api/auth/token/`                                       | Connexion (access + refresh), 5 essais par minute                                | Public (limité)                                |
+| POST                              | `/api/auth/refresh/`                                     | Nouveau jeton access (lit le cookie de rafraîchissement)                         | Cookie valide                                  |
+| POST                              | `/api/auth/logout/`                                      | Invalide le refresh                                                              | Refresh valide                                 |
+| GET / PATCH                       | `/api/auth/me/`                                          | Profil, rôle et droits ; modification de l'e-mail et du nom                      | Connecté                                       |
+| POST                              | `/api/auth/change-password/`                             | Changer son mot de passe (ferme toutes les sessions)                             | Connecté                                       |
+| POST                              | `/api/auth/register/`                                    | Demande de compte (inactif jusqu'à approbation), 5 par heure                     | Public (limité)                                |
+| POST                              | `/api/auth/password-reset/`                              | Envoie le lien de réinitialisation (réponse identique si l'adresse est inconnue) | Public (limité)                                |
+| POST                              | `/api/auth/password-reset/confirm/`                      | Choisit un nouveau mot de passe avec `uid` et `token`                            | Public (limité)                                |
+| GET / POST                        | `/api/users/`                                            | Lister (filtres `status`, `role`, `search`) / créer un utilisateur               | Gestionnaire                                   |
+| GET / PATCH / DELETE              | `/api/users/<id>/`                                       | Détail, modification (rôle, droits, activation), suppression                     | Gestionnaire                                   |
+| POST                              | `/api/users/<id>/set-password/`                          | Définir un mot de passe temporaire                                               | Gestionnaire                                   |
+| GET                               | `/api/products/`                                         | Liste filtrée et paginée                                                         | Connecté                                       |
+| GET                               | `/api/products/low-stock/`                               | Produits sous le seuil                                                           | Connecté                                       |
+| POST                              | `/api/products/`                                         | Créer un produit                                                                 | Droit « catalogue »                            |
+| PUT / PATCH / DELETE              | `/api/products/<id>/`                                    | Modifier / supprimer un produit                                                  | Droit « catalogue »                            |
+| GET                               | `/api/categories/`                                       | Liste des catégories (sans pagination)                                           | Connecté                                       |
+| POST / PUT / PATCH / DELETE       | `/api/categories/`                                       | Gestion des catégories                                                           | Droit « catalogue »                            |
+| POST                              | `/api/sales/`                                            | Enregistrer une vente                                                            | Connecté                                       |
+| GET                               | `/api/sales/`                                            | Lister les ventes (les siennes, ou toutes avec le droit « toutes les ventes »)   | Connecté                                       |
+| GET / POST                        | `/api/movements/`                                        | Historique et mouvements de stock                                                | Droit « stock »                                |
+| GET                               | `/api/products/export/`                                  | CSV des produits (mêmes filtres que la liste)                                    | Connecté                                       |
+| GET                               | `/api/products/next-barcode/`                            | Prochain code-barres interne libre (EAN-13, préfixe 2)                           | Connecté                                       |
+| GET                               | `/api/sales/stats/?days=30`                              | Totaux, ventes par jour, meilleurs produits et catégories (1 à 365 jours)        | Connecté (ses ventes, ou toutes avec le droit) |
+| GET                               | `/api/sales/export/`                                     | CSV des ventes (`date_from`, `date_to` facultatifs)                              | Connecté (ses ventes, ou toutes avec le droit) |
+| GET                               | `/api/movements/export/`                                 | CSV des mouvements                                                               | Droit « stock »                                |
+| GET / POST / PUT / PATCH / DELETE | `/api/suppliers/`                                        | Fournisseurs (suppression refusée s'ils ont des bons)                            | Droit « stock »                                |
+| GET / POST / PUT / PATCH / DELETE | `/api/purchase-orders/`                                  | Bons de commande (modifiables et supprimables en brouillon seulement)            | Droit « stock »                                |
+| POST                              | `/api/purchase-orders/<id>/send/`, `receive/`, `cancel/` | Changer le statut ; `receive` met le stock à jour                                | Droit « stock »                                |
+| GET                               | `/api/purchase-orders/export/`                           | CSV des bons de commande                                                         | Droit « stock »                                |
 
 Paramètres de filtrage des produits : `search` (nom, SKU ou code-barres), `category`, `supplier`, `barcode`, `has_barcode`, `min_price`, `max_price`, `low_stock`, `is_active`, `ordering`, `page`.
 
@@ -369,15 +369,16 @@ Les adresses de l'API ne changent pas (`/api/auth/...`, `/api/users/`, `/api/pro
 
 ### Rôles et droits
 
-| | Vendeur | Vendeur avec droits | Gestionnaire |
-|---|---|---|---|
-| Voir produits, tableau de bord, ses ventes ; vendre | oui | oui | oui |
-| Gérer le catalogue (produits, catégories) | non | si « Gérer le catalogue » | oui |
-| Gérer le stock (mouvements, fournisseurs, bons de commande) | non | si « Gérer le stock » | oui |
-| Voir toutes les ventes | non | si « Voir toutes les ventes » | oui |
-| Gérer les utilisateurs | non | non (jamais délégable) | oui |
+|                                                             | Vendeur | Vendeur avec droits           | Gestionnaire |
+| ----------------------------------------------------------- | ------- | ----------------------------- | ------------ |
+| Voir produits, tableau de bord, ses ventes ; vendre         | oui     | oui                           | oui          |
+| Gérer le catalogue (produits, catégories)                   | non     | si « Gérer le catalogue »     | oui          |
+| Gérer le stock (mouvements, fournisseurs, bons de commande) | non     | si « Gérer le stock »         | oui          |
+| Voir toutes les ventes                                      | non     | si « Voir toutes les ventes » | oui          |
+| Gérer les utilisateurs                                      | non     | non (jamais délégable)        | oui          |
 
 Règles de sécurité des comptes :
+
 - une inscription crée un compte **inactif et sans rôle** : il ne peut rien faire avant l'approbation d'un gestionnaire ;
 - un gestionnaire ne peut ni se désactiver, ni changer son propre rôle, ni supprimer son compte, et le **dernier gestionnaire actif** ne peut pas être retiré ;
 - les **superutilisateurs** (le compte de `setup_defaults`) sont protégés : ils se gèrent uniquement depuis `/admin/` ;
