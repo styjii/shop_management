@@ -1,8 +1,12 @@
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+
+if TYPE_CHECKING:
+    from django.db.models.fields.related_descriptors import RelatedManager
 
 from .barcodes import validate_gtin
 from .validators import validate_image_extension, validate_image_size
@@ -149,6 +153,10 @@ class Sale(models.Model):
         "total", max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
 
+    if TYPE_CHECKING:
+        # Reverse relation created by Django at runtime: declared for the type checker only.
+        items: RelatedManager["SaleItem"]
+
     class Meta:
         verbose_name = "vente"
         verbose_name_plural = "ventes"
@@ -211,6 +219,13 @@ class PurchaseOrder(models.Model):
     )
     created_at = models.DateTimeField("créé le", auto_now_add=True)
     received_at = models.DateTimeField("reçu le", null=True, blank=True)
+
+    if TYPE_CHECKING:
+        # Reverse relation and choices helper, created by Django at runtime: declared for
+        # the type checker only (nothing is executed here).
+        lines: RelatedManager["PurchaseOrderLine"]
+
+        def get_status_display(self) -> str: ...
 
     class Meta:
         verbose_name = "bon de commande"

@@ -67,9 +67,9 @@ def change_order_status(order_id, new_status, user):
         )
     if new_status == PurchaseOrder.Status.RECEIVED:
         lines = list(order.lines.select_related("product"))
-        products = lock_products([line.product_id for line in lines])
+        products = lock_products([line.product.pk for line in lines])
         for line in lines:
-            product = products[line.product_id]
+            product = products[line.product.pk]
             apply_stock_change(product, StockMovement.Kind.IN, line.quantity)
             StockMovement.objects.create(
                 product=product,
