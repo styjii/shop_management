@@ -1,7 +1,7 @@
 @if (auth.isLoggedIn()) {
-  <header class="navbar sticky top-0 z-30 bg-base-100 shadow-sm">
+  <header class="navbar sticky top-0 z-30 bg-base-100 shadow-sm print:hidden">
     <div class="navbar-start">
-      <div class="dropdown lg:hidden">
+      <div class="dropdown xl:hidden">
         <div tabindex="0" role="button" class="btn btn-ghost btn-square" aria-label="Menu">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -28,7 +28,7 @@
       <a routerLink="/" class="btn btn-ghost text-lg font-bold sm:text-xl">Shop Management</a>
     </div>
 
-    <nav class="navbar-center hidden lg:flex">
+    <nav class="navbar-center hidden xl:flex">
       <ul class="menu menu-horizontal gap-1 px-1">
         <ng-container [ngTemplateOutlet]="links" />
       </ul>
@@ -68,8 +68,11 @@
     >
   </li>
   <li><a routerLink="/sales/history" routerLinkActive="menu-active">Historique</a></li>
+  <li><a routerLink="/stats" routerLinkActive="menu-active">Statistiques</a></li>
   @if (auth.can('manage_stock')) {
     <li><a routerLink="/movements" routerLinkActive="menu-active">Mouvements</a></li>
+    <li><a routerLink="/suppliers" routerLinkActive="menu-active">Fournisseurs</a></li>
+    <li><a routerLink="/purchase-orders" routerLinkActive="menu-active">Commandes</a></li>
   }
   @if (auth.can('manage_catalog')) {
     <li><a routerLink="/categories" routerLinkActive="menu-active">Catégories</a></li>

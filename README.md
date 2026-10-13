@@ -51,6 +51,10 @@ Convention du projet : le **code reste en anglais**, les **sorties** (administra
 - CRUD des **produits** et des **catégories** (SKU unique, prix, quantité, image de 2 Mo maximum).
 - **Recherche et filtres** : recherche par nom ou SKU, filtres par catégorie, prix et « stock bas », tri et pagination.
 - **Alertes** de stock bas, avec seuil configurable par produit.
+- **Export CSV** des produits (selon les filtres), des ventes (une ligne par article vendu), des mouvements et des bons de commande : séparateur `;`, UTF-8 avec BOM et virgule décimale pour Excel en français ; les cellules qui commencent par `=`, `+`, `-` ou `@` sont neutralisées contre l'injection de formules.
+- **Statistiques de ventes** (7, 30 ou 90 jours) : chiffre d'affaires, nombre de ventes, articles vendus, panier moyen, graphique du chiffre d'affaires par jour, produits les plus vendus et chiffre d'affaires par catégorie. Un vendeur ne voit que ses propres ventes. Graphiques dessinés en SVG, sans bibliothèque.
+- **Codes-barres** (EAN-13, EAN-8, UPC-A) : champ unique et validé (clé de contrôle) sur chaque produit, génération d'un code interne (préfixe 2), aperçu en SVG, planche d'**étiquettes imprimable**, et **scan en caisse** (une douchette tape le code puis Entrée : le produit est ajouté au panier).
+- **Fournisseurs** et **bons de commande** : brouillon, envoyé, reçu ou annulé. La réception ajoute le stock et enregistre une entrée par produit, en une transaction, et ne peut se faire qu'une fois. Un produit peut avoir un fournisseur habituel ; le bon peut être prérempli avec ses produits en stock bas.
 - **Ventes atomiques** : contrôle du stock, prix figé, total calculé par le serveur, lignes en double fusionnées.
 - **Mouvements de stock** (entrée, sortie, ajustement) qui mettent à jour la quantité du produit.
 - **Suppression protégée** : une catégorie ou un produit déjà utilisé ne peut pas être supprimé (réponse 409 claire).
@@ -333,8 +337,17 @@ Depuis le tableau de bord ou la liste des produits, le lien « Réapprovisionner
 | POST | `/api/sales/` | Enregistrer une vente | Connecté |
 | GET | `/api/sales/` | Lister les ventes (les siennes, ou toutes avec le droit « toutes les ventes ») | Connecté |
 | GET / POST | `/api/movements/` | Historique et mouvements de stock | Droit « stock » |
+| GET | `/api/products/export/` | CSV des produits (mêmes filtres que la liste) | Connecté |
+| GET | `/api/products/next-barcode/` | Prochain code-barres interne libre (EAN-13, préfixe 2) | Connecté |
+| GET | `/api/sales/stats/?days=30` | Totaux, ventes par jour, meilleurs produits et catégories (1 à 365 jours) | Connecté (ses ventes, ou toutes avec le droit) |
+| GET | `/api/sales/export/` | CSV des ventes (`date_from`, `date_to` facultatifs) | Connecté (ses ventes, ou toutes avec le droit) |
+| GET | `/api/movements/export/` | CSV des mouvements | Droit « stock » |
+| GET / POST / PUT / PATCH / DELETE | `/api/suppliers/` | Fournisseurs (suppression refusée s'ils ont des bons) | Droit « stock » |
+| GET / POST / PUT / PATCH / DELETE | `/api/purchase-orders/` | Bons de commande (modifiables et supprimables en brouillon seulement) | Droit « stock » |
+| POST | `/api/purchase-orders/<id>/send/`, `receive/`, `cancel/` | Changer le statut ; `receive` met le stock à jour | Droit « stock » |
+| GET | `/api/purchase-orders/export/` | CSV des bons de commande | Droit « stock » |
 
-Paramètres de filtrage des produits : `search`, `category`, `min_price`, `max_price`, `low_stock`, `is_active`, `ordering`, `page`.
+Paramètres de filtrage des produits : `search` (nom, SKU ou code-barres), `category`, `supplier`, `barcode`, `has_barcode`, `min_price`, `max_price`, `low_stock`, `is_active`, `ordering`, `page`.
 
 Exemple de vente :
 
@@ -360,7 +373,7 @@ Les adresses de l'API ne changent pas (`/api/auth/...`, `/api/users/`, `/api/pro
 |---|---|---|---|
 | Voir produits, tableau de bord, ses ventes ; vendre | oui | oui | oui |
 | Gérer le catalogue (produits, catégories) | non | si « Gérer le catalogue » | oui |
-| Gérer le stock (mouvements) | non | si « Gérer le stock » | oui |
+| Gérer le stock (mouvements, fournisseurs, bons de commande) | non | si « Gérer le stock » | oui |
 | Voir toutes les ventes | non | si « Voir toutes les ventes » | oui |
 | Gérer les utilisateurs | non | non (jamais délégable) | oui |
 
@@ -436,6 +449,7 @@ cd frontend && npm audit
 - [x] Interface des mouvements de stock, historique des ventes et catégories
 - [x] Gestion des utilisateurs, droits individuels, inscription et mot de passe oublié
 - [x] Durcissement de sécurité et fichiers de déploiement (`deploy/`, `gunicorn.conf.py`)
+- [x] Export CSV, statistiques de ventes, codes-barres, fournisseurs et bons de commande
 - [ ] Mise en ligne effective (PostgreSQL, Gunicorn, Nginx, HTTPS)
 
 ## Contribuer

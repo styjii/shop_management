@@ -1,0 +1,172 @@
+<h1 class="mb-4 text-2xl font-bold">Fournisseurs</h1>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="lg:col-span-1">
+    <form [formGroup]="form" (ngSubmit)="save()" class="card bg-base-100 shadow" novalidate>
+      <div class="card-body gap-3">
+        <h2 class="card-title">
+          {{ editing() ? 'Modifier le fournisseur' : 'Nouveau fournisseur' }}
+        </h2>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Nom</legend>
+          <input
+            type="text"
+            class="input w-full"
+            formControlName="name"
+            [class.input-error]="
+              (form.controls.name.touched && form.controls.name.invalid) ||
+              errorsFor('name').length > 0
+            "
+          />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <p class="label text-error">Le nom est obligatoire (150 caractères maximum).</p>
+          }
+          @for (message of errorsFor('name'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Contact (facultatif)</legend>
+          <input type="text" class="input w-full" formControlName="contact_name" />
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">E-mail (facultatif)</legend>
+          <input
+            type="email"
+            class="input w-full"
+            formControlName="email"
+            [class.input-error]="form.controls.email.invalid || errorsFor('email').length > 0"
+          />
+          @if (form.controls.email.invalid) {
+            <p class="label text-error">Adresse e-mail invalide.</p>
+          }
+          @for (message of errorsFor('email'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Téléphone (facultatif)</legend>
+          <input type="tel" class="input w-full" formControlName="phone" />
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Adresse (facultatif)</legend>
+          <textarea class="textarea w-full" rows="2" formControlName="address"></textarea>
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Notes (facultatif)</legend>
+          <textarea class="textarea w-full" rows="2" formControlName="notes"></textarea>
+        </fieldset>
+
+        <label class="label cursor-pointer justify-start gap-3">
+          <input type="checkbox" class="checkbox" formControlName="is_active" />
+          <span>Fournisseur actif (utilisable dans un bon de commande)</span>
+        </label>
+
+        <div class="card-actions justify-end">
+          @if (editing()) {
+            <button type="button" class="btn" (click)="cancelEdit()">Annuler</button>
+          }
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">
+            @if (saving()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+            {{ editing() ? 'Enregistrer' : 'Ajouter' }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section class="lg:col-span-2">
+    @if (error(); as message) {
+      <div role="alert" class="alert alert-error mb-3">
+        <span>{{ message }}</span>
+      </div>
+    }
+
+    <p class="mb-2 text-sm opacity-70">
+      {{ suppliers().length }} fournisseur(s)
+      @if (loading()) {
+        <span class="loading loading-spinner loading-xs ml-2"></span>
+      }
+    </p>
+
+    <div class="overflow-x-auto rounded-box bg-base-100 shadow">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th class="hidden sm:table-cell">Contact</th>
+            <th class="hidden md:table-cell">Téléphone</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of suppliers(); track s.id) {
+            <tr>
+              <td>
+                <div class="font-medium">{{ s.name }}</div>
+                @if (s.email) {
+                  <div class="text-xs opacity-70">{{ s.email }}</div>
+                }
+              </td>
+              <td class="hidden sm:table-cell">{{ s.contact_name || '—' }}</td>
+              <td class="hidden md:table-cell">{{ s.phone || '—' }}</td>
+              <td>
+                <span
+                  class="badge"
+                  [class.badge-success]="s.is_active"
+                  [class.badge-ghost]="!s.is_active"
+                >
+                  {{ s.is_active ? 'Actif' : 'Inactif' }}
+                </span>
+              </td>
+              <td class="whitespace-nowrap text-right">
+                <button type="button" class="btn btn-ghost btn-xs" (click)="edit(s)">
+                  Modifier
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error"
+                  (click)="askDelete(s)"
+                >
+                  Supprimer
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            @if (!loading()) {
+              <tr>
+                <td colspan="5" class="py-8 text-center opacity-70">Aucun fournisseur.</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+@if (toDelete(); as supplier) {
+  <div class="modal modal-open" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Supprimer ce fournisseur ?</h3>
+      <p class="py-4">
+        « {{ supplier.name }} » sera supprimé. Un fournisseur qui a déjà des bons de commande ne
+        peut pas être supprimé : désactivez-le plutôt.
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn btn-error" (click)="confirmDelete()">Supprimer</button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="cancelDelete()"></div>
+  </div>
+}

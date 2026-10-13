@@ -103,8 +103,19 @@
   <section class="lg:col-span-2">
     <div class="mb-3 flex flex-wrap items-center gap-2">
       <h2 class="text-lg font-semibold">Historique</h2>
+      <button
+        type="button"
+        class="btn btn-sm ml-auto"
+        [disabled]="exporting()"
+        (click)="exportCsv()"
+      >
+        @if (exporting()) {
+          <span class="loading loading-spinner loading-xs"></span>
+        }
+        Exporter en CSV
+      </button>
       <select
-        class="select select-sm ml-auto w-44"
+        class="select select-sm w-44"
         [formControl]="kindFilter"
         aria-label="Filtrer par type"
       >

@@ -1,0 +1,187 @@
+@if (loading()) {
+  <span class="loading loading-spinner"></span>
+}
+
+@if (loadError(); as message) {
+  <div role="alert" class="alert alert-error mb-4">
+    <span>{{ message }}</span>
+  </div>
+  <a routerLink="/purchase-orders" class="btn">Retour aux bons de commande</a>
+} @else if (!loading()) {
+  <h1 class="mb-4 text-2xl font-bold">
+    {{ id ? 'Modifier le bon de commande' : 'Nouveau bon de commande' }}
+  </h1>
+
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate class="grid gap-6 lg:grid-cols-3">
+    <section class="card bg-base-100 shadow lg:col-span-1">
+      <div class="card-body gap-3">
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Fournisseur</legend>
+          <select
+            class="select w-full"
+            formControlName="supplier"
+            [class.select-error]="
+              (form.controls.supplier.touched && form.controls.supplier.invalid) ||
+              errorsFor('supplier').length > 0
+            "
+          >
+            <option [ngValue]="null">Choisir un fournisseur</option>
+            @for (s of suppliers(); track s.id) {
+              <option [ngValue]="s.id">{{ s.name }}</option>
+            }
+          </select>
+          @if (form.controls.supplier.touched && form.controls.supplier.invalid) {
+            <p class="label text-error">Choisissez un fournisseur.</p>
+          }
+          @for (message of errorsFor('supplier'); track message) {
+            <p class="label text-error">{{ message }}</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Livraison prévue (facultatif)</legend>
+          <input type="date" class="input w-full" formControlName="expected_date" />
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Notes (facultatif)</legend>
+          <textarea class="textarea w-full" rows="3" formControlName="notes"></textarea>
+        </fieldset>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow lg:col-span-2">
+      <div class="card-body gap-3">
+        <h2 class="card-title">Produits commandés</h2>
+
+        <div class="relative">
+          <input
+            type="search"
+            class="input w-full"
+            placeholder="Rechercher un produit à ajouter (nom, SKU ou code-barres)"
+            aria-label="Rechercher un produit à ajouter"
+            [formControl]="productSearch"
+          />
+          @if (candidates().length) {
+            <ul
+              class="menu absolute z-10 mt-1 w-full rounded-box bg-base-100 shadow-lg"
+              role="listbox"
+            >
+              @for (p of candidates(); track p.id) {
+                <li>
+                  <button type="button" [disabled]="hasProduct(p.id)" (click)="addProduct(p)">
+                    <span class="font-medium">{{ p.name }}</span>
+                    <span class="text-xs opacity-70">{{ p.sku }} · stock {{ p.quantity }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline"
+            [disabled]="form.controls.supplier.value === null"
+            (click)="addLowStock()"
+          >
+            Ajouter les produits en stock bas de ce fournisseur
+          </button>
+        </div>
+
+        @for (message of errorsFor('lines'); track message) {
+          <div role="alert" class="alert alert-error">
+            <span>{{ message }}</span>
+          </div>
+        }
+
+        <div class="overflow-x-auto">
+          <table class="table" formArrayName="lines">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th class="w-28">Quantité</th>
+                <th class="w-32">Prix d'achat</th>
+                <th class="text-right">Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of lines.controls; track line; let i = $index) {
+                <tr [formGroupName]="i">
+                  <td>
+                    <div class="font-medium">{{ line.controls.name.value }}</div>
+                    <div class="text-xs opacity-70">{{ line.controls.sku.value }}</div>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      class="input input-sm w-24"
+                      min="1"
+                      step="1"
+                      formControlName="quantity"
+                      [attr.aria-label]="'Quantité de ' + line.controls.name.value"
+                      [class.input-error]="line.controls.quantity.invalid"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      class="input input-sm w-28"
+                      min="0"
+                      step="0.01"
+                      formControlName="unit_cost"
+                      [attr.aria-label]="'Prix d\'achat de ' + line.controls.name.value"
+                      [class.input-error]="line.controls.unit_cost.invalid"
+                    />
+                  </td>
+                  <td class="text-right">
+                    {{
+                      line.controls.quantity.value * line.controls.unit_cost.value | currency: 'EUR'
+                    }}
+                  </td>
+                  <td class="text-right">
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs text-error"
+                      [attr.aria-label]="'Retirer ' + line.controls.name.value"
+                      (click)="removeLine(i)"
+                    >
+                      Retirer
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="py-6 text-center opacity-70">
+                    Ajoutez au moins un produit.
+                  </td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="3" class="text-right">Total</th>
+                <th class="text-right" data-testid="total">{{ total() | currency: 'EUR' }}</th>
+                <th></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="card-actions justify-end">
+          <a [routerLink]="id ? ['/purchase-orders', id] : ['/purchase-orders']" class="btn"
+            >Annuler</a
+          >
+          <button type="submit" class="btn btn-primary" [disabled]="saving() || lines.length === 0">
+            @if (saving()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+            Enregistrer le brouillon
+          </button>
+        </div>
+      </div>
+    </section>
+  </form>
+}

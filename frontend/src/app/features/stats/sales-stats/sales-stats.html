@@ -1,0 +1,114 @@
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+  <h1 class="text-2xl font-bold">Statistiques de ventes</h1>
+  <div class="flex flex-wrap gap-2">
+    <select
+      class="select select-sm sm:select-md"
+      aria-label="Période"
+      [value]="days()"
+      (change)="setDays($any($event.target).value)"
+    >
+      @for (p of periods; track p.days) {
+        <option [value]="p.days">{{ p.label }}</option>
+      }
+    </select>
+    <button
+      type="button"
+      class="btn btn-sm sm:btn-md"
+      [disabled]="exporting()"
+      (click)="exportCsv()"
+    >
+      @if (exporting()) {
+        <span class="loading loading-spinner loading-xs"></span>
+      }
+      Exporter les ventes en CSV
+    </button>
+  </div>
+</div>
+
+@if (error(); as message) {
+  <div role="alert" class="alert alert-error mb-4">
+    <span>{{ message }}</span>
+  </div>
+}
+
+@if (loading() && !stats()) {
+  <span class="loading loading-spinner"></span>
+}
+
+@if (stats(); as s) {
+  <div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="rounded-box bg-base-100 p-4 shadow">
+      <div class="text-sm opacity-70">Chiffre d'affaires</div>
+      <div class="text-2xl font-bold" data-testid="revenue">
+        {{ s.totals.revenue | currency: 'EUR' }}
+      </div>
+    </div>
+    <div class="rounded-box bg-base-100 p-4 shadow">
+      <div class="text-sm opacity-70">Ventes</div>
+      <div class="text-2xl font-bold" data-testid="sales-count">{{ s.totals.sales_count }}</div>
+    </div>
+    <div class="rounded-box bg-base-100 p-4 shadow">
+      <div class="text-sm opacity-70">Articles vendus</div>
+      <div class="text-2xl font-bold" data-testid="items-sold">{{ s.totals.items_sold }}</div>
+    </div>
+    <div class="rounded-box bg-base-100 p-4 shadow">
+      <div class="text-sm opacity-70">Panier moyen</div>
+      <div class="text-2xl font-bold" data-testid="average-basket">
+        {{ s.totals.average_basket | currency: 'EUR' }}
+      </div>
+    </div>
+  </div>
+
+  <section class="mb-6 rounded-box bg-base-100 p-4 shadow">
+    <h2 class="mb-2 text-lg font-semibold">Chiffre d'affaires par jour</h2>
+    <app-bar-chart [points]="points()" title="Chiffre d'affaires par jour" />
+  </section>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <section class="rounded-box bg-base-100 p-4 shadow">
+      <h2 class="mb-3 text-lg font-semibold">Produits les plus vendus</h2>
+      <ul class="space-y-3">
+        @for (p of s.top_products; track p.product) {
+          <li data-testid="top-product">
+            <div class="flex justify-between gap-2 text-sm">
+              <span class="font-medium">{{ p.name }}</span>
+              <span class="opacity-70"
+                >{{ p.quantity }} vendu(s) · {{ p.revenue | currency: 'EUR' }}</span
+              >
+            </div>
+            <div class="mt-1 h-2 rounded bg-base-200">
+              <div
+                class="h-2 rounded bg-primary"
+                [style.width.%]="share(p.revenue, topMax())"
+              ></div>
+            </div>
+          </li>
+        } @empty {
+          <li class="opacity-70">Aucune vente sur cette période.</li>
+        }
+      </ul>
+    </section>
+
+    <section class="rounded-box bg-base-100 p-4 shadow">
+      <h2 class="mb-3 text-lg font-semibold">Chiffre d'affaires par catégorie</h2>
+      <ul class="space-y-3">
+        @for (c of s.by_category; track c.category) {
+          <li data-testid="category">
+            <div class="flex justify-between gap-2 text-sm">
+              <span class="font-medium">{{ c.category }}</span>
+              <span class="opacity-70">{{ c.revenue | currency: 'EUR' }}</span>
+            </div>
+            <div class="mt-1 h-2 rounded bg-base-200">
+              <div
+                class="h-2 rounded bg-secondary"
+                [style.width.%]="share(c.revenue, categoryMax())"
+              ></div>
+            </div>
+          </li>
+        } @empty {
+          <li class="opacity-70">Aucune vente sur cette période.</li>
+        }
+      </ul>
+    </section>
+  </div>
+}

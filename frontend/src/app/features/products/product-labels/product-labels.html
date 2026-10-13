@@ -1,0 +1,75 @@
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
+  <h1 class="text-2xl font-bold">Étiquettes de codes-barres</h1>
+  <div class="flex gap-2">
+    <a routerLink="/products" class="btn btn-sm sm:btn-md">Retour aux produits</a>
+    <button type="button" class="btn btn-primary btn-sm sm:btn-md" (click)="print()">
+      Imprimer
+    </button>
+  </div>
+</div>
+
+<div class="mb-4 rounded-box bg-base-100 p-4 shadow print:hidden">
+  <input
+    type="search"
+    class="input w-full"
+    placeholder="Rechercher (nom, SKU ou code-barres)"
+    aria-label="Rechercher un produit"
+    [formControl]="search"
+  />
+  <p class="mt-2 text-sm opacity-70">
+    {{ count() }} produit(s) avec un code-barres. La page affichée est celle qui sera imprimée.
+    @if (loading()) {
+      <span class="loading loading-spinner loading-xs ml-2"></span>
+    }
+  </p>
+</div>
+
+@if (error(); as message) {
+  <div role="alert" class="alert alert-error mb-4 print:hidden">
+    <span>{{ message }}</span>
+  </div>
+}
+
+<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-3 print:gap-2">
+  @for (p of products(); track p.id) {
+    <figure
+      class="break-inside-avoid rounded-box border border-base-300 bg-white p-2 text-center text-black"
+    >
+      <figcaption class="truncate text-sm font-medium">{{ p.name }}</figcaption>
+      <app-barcode [value]="p.barcode" />
+      <div class="text-sm font-semibold">{{ p.price | currency: 'EUR' }}</div>
+    </figure>
+  } @empty {
+    @if (!loading()) {
+      <p class="col-span-full py-8 text-center opacity-70 print:hidden">
+        Aucun produit avec un code-barres. Ajoutez-en depuis la fiche d'un produit.
+      </p>
+    }
+  }
+</div>
+
+@if (pageCount() > 1) {
+  <div class="mt-4 flex justify-center print:hidden">
+    <div class="join">
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() <= 1"
+        (click)="goTo(page() - 1)"
+      >
+        «
+      </button>
+      <button type="button" class="btn join-item pointer-events-none">
+        Page {{ page() }} / {{ pageCount() }}
+      </button>
+      <button
+        type="button"
+        class="btn join-item"
+        [disabled]="page() >= pageCount()"
+        (click)="goTo(page() + 1)"
+      >
+        »
+      </button>
+    </div>
+  </div>
+}

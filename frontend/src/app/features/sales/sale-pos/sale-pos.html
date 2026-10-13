@@ -6,7 +6,8 @@
       type="search"
       class="input mb-4 w-full"
       [formControl]="search"
-      placeholder="Rechercher un produit (nom ou SKU)"
+      (keydown.enter)="scan()"
+      placeholder="Rechercher ou scanner un code-barres"
       aria-label="Rechercher un produit"
     />
 

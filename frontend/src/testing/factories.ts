@@ -1,4 +1,13 @@
-import { AppUser, CurrentUser, Product, Sale, StockMovement } from '../app/models/inventory';
+import {
+  AppUser,
+  CurrentUser,
+  Product,
+  PurchaseOrder,
+  Sale,
+  SalesStats,
+  StockMovement,
+  Supplier,
+} from '../app/models/inventory';
 
 export function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
@@ -11,6 +20,9 @@ export function makeProduct(overrides: Partial<Product> = {}): Product {
     quantity: 10,
     low_stock_threshold: 5,
     is_low_stock: false,
+    barcode: null,
+    supplier: null,
+    supplier_name: null,
     image: null,
     is_active: true,
     ...overrides,
@@ -86,4 +98,64 @@ export function makeAppUser(overrides: Partial<AppUser> = {}): AppUser {
 
 export function page<T>(results: T[], count = results.length) {
   return { count, next: null, previous: null, results };
+}
+
+export function makeSupplier(overrides: Partial<Supplier> = {}): Supplier {
+  return {
+    id: 1,
+    name: 'Boissons SA',
+    contact_name: 'Jeanne Durand',
+    email: 'contact@boissons.example',
+    phone: '0102030405',
+    address: '1 rue des Fleurs',
+    notes: '',
+    is_active: true,
+    ...overrides,
+  };
+}
+
+export function makeOrder(overrides: Partial<PurchaseOrder> = {}): PurchaseOrder {
+  return {
+    id: 7,
+    reference: 'BC-00007',
+    supplier: 1,
+    supplier_name: 'Boissons SA',
+    status: 'DRAFT',
+    expected_date: '2026-11-01',
+    notes: '',
+    created_by: 'chef',
+    created_at: '2026-10-09T09:00:00Z',
+    received_at: null,
+    total: '16.00',
+    lines: [
+      {
+        product: 1,
+        product_name: 'Eau minérale',
+        product_sku: 'WATER-1',
+        quantity: 20,
+        unit_cost: '0.80',
+        line_total: '16.00',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+export function makeStats(overrides: Partial<SalesStats> = {}): SalesStats {
+  return {
+    days: 7,
+    from: '2026-10-06',
+    to: '2026-10-12',
+    totals: { revenue: '12.00', sales_count: 3, items_sold: 8, average_basket: '4.00' },
+    daily: [
+      { date: '2026-10-11', revenue: '0.00', sales_count: 0 },
+      { date: '2026-10-12', revenue: '12.00', sales_count: 3 },
+    ],
+    top_products: [
+      { product: 1, name: 'Eau minérale', quantity: 6, revenue: '9.00' },
+      { product: 2, name: 'Jus', quantity: 1, revenue: '3.00' },
+    ],
+    by_category: [{ category: 'Boissons', revenue: '12.00' }],
+    ...overrides,
+  };
 }

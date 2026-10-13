@@ -31,6 +31,7 @@ export class ProductList {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly toDelete = signal<Product | null>(null);
+  readonly exporting = signal(false);
 
   private readonly criteria = signal<ProductFilters>({ ordering: 'name', page: 1 });
   readonly page = computed(() => this.criteria().page ?? 1);
@@ -45,6 +46,18 @@ export class ProductList {
     lowStock: new FormControl(false, { nonNullable: true }),
     ordering: new FormControl('name', { nonNullable: true }),
   });
+
+  /** Download the products matching the current filters (all pages) as CSV. */
+  exportCsv() {
+    this.exporting.set(true);
+    this.productApi.exportCsv(this.criteria()).subscribe({
+      next: () => this.exporting.set(false),
+      error: (err) => {
+        this.exporting.set(false);
+        this.toast.error(extractError(err, "L'export a échoué."));
+      },
+    });
+  }
 
   constructor() {
     this.categoryApi.list().subscribe({

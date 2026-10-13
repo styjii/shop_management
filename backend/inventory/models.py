@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from .barcodes import validate_gtin
 from .validators import validate_image_extension, validate_image_size
 
 
@@ -14,6 +15,25 @@ class Category(models.Model):
     class Meta:
         verbose_name = "catégorie"
         verbose_name_plural = "catégories"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Supplier(models.Model):
+    name = models.CharField("nom", max_length=150, unique=True)
+    contact_name = models.CharField("contact", max_length=150, blank=True)
+    email = models.EmailField("e-mail", blank=True)
+    phone = models.CharField("téléphone", max_length=30, blank=True)
+    address = models.TextField("adresse", blank=True)
+    notes = models.TextField("notes", blank=True)
+    is_active = models.BooleanField("actif", default=True)
+    created_at = models.DateTimeField("créé le", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "fournisseur"
+        verbose_name_plural = "fournisseurs"
         ordering = ["name"]
 
     def __str__(self):
@@ -37,6 +57,22 @@ class Product(models.Model):
     )
     quantity = models.PositiveIntegerField("quantité en stock", default=0)
     low_stock_threshold = models.PositiveIntegerField("seuil d'alerte", default=5)
+    barcode = models.CharField(
+        "code-barres",
+        max_length=13,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[validate_gtin],
+    )
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+        verbose_name="fournisseur habituel",
+    )
     image = models.ImageField(
         "image",
         upload_to="products/",
@@ -144,6 +180,87 @@ class SaleItem(models.Model):
     @property
     def line_total(self):
         return self.unit_price * self.quantity
+
+    def __str__(self):
+        return f"{self.quantity} × {self.product}"
+
+
+class PurchaseOrder(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Brouillon"
+        SENT = "SENT", "Envoyé"
+        RECEIVED = "RECEIVED", "Reçu"
+        CANCELLED = "CANCELLED", "Annulé"
+
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        related_name="purchase_orders",
+        verbose_name="fournisseur",
+    )
+    status = models.CharField(
+        "statut", max_length=10, choices=Status.choices, default=Status.DRAFT
+    )
+    expected_date = models.DateField("livraison prévue", null=True, blank=True)
+    notes = models.TextField("notes", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="purchase_orders",
+        verbose_name="créé par",
+    )
+    created_at = models.DateTimeField("créé le", auto_now_add=True)
+    received_at = models.DateTimeField("reçu le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "bon de commande"
+        verbose_name_plural = "bons de commande"
+        ordering = ["-created_at", "-id"]
+
+    @property
+    def reference(self):
+        return f"BC-{self.pk:05d}"
+
+    @property
+    def total(self):
+        return sum((line.line_total for line in self.lines.all()), Decimal("0.00"))
+
+    def __str__(self):
+        return self.reference
+
+
+class PurchaseOrderLine(models.Model):
+    order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.CASCADE,
+        related_name="lines",
+        verbose_name="bon de commande",
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.PROTECT, verbose_name="produit"
+    )
+    quantity = models.PositiveIntegerField(
+        "quantité", validators=[MinValueValidator(1)]
+    )
+    unit_cost = models.DecimalField(
+        "prix d'achat unitaire",
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+
+    class Meta:
+        verbose_name = "ligne de commande"
+        verbose_name_plural = "lignes de commande"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["order", "product"], name="purchase_line_unique_product"
+            ),
+        ]
+
+    @property
+    def line_total(self):
+        return self.unit_cost * self.quantity
 
     def __str__(self):
         return f"{self.quantity} × {self.product}"

@@ -1,15 +1,32 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/auth';
+import { isValidGtin } from '../../../core/ean';
 import { extractError, fieldErrors } from '../../../core/errors';
 import { ToastService } from '../../../core/toast';
-import { Category } from '../../../models/inventory';
+import { Category, Supplier } from '../../../models/inventory';
 import { CategoryService } from '../../../services/category';
 import { ProductService } from '../../../services/product';
+import { SupplierService } from '../../../services/supplier';
+import { Barcode } from '../../../shared/barcode/barcode';
+
+/** Empty is allowed; otherwise EAN-8, UPC-A or EAN-13 with a correct check digit. */
+export function barcodeValidator(control: AbstractControl): ValidationErrors | null {
+  const value = String(control.value ?? '').trim();
+  return value === '' || isValidGtin(value) ? null : { gtin: true };
+}
 
 @Component({
   selector: 'app-product-form',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Barcode],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './product-form.html',
 })
@@ -19,10 +36,14 @@ export class ProductForm {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
+  private supplierApi = inject(SupplierService);
+  protected readonly auth = inject(AuthService);
 
   readonly id = Number(this.route.snapshot.paramMap.get('id')) || null;
 
   readonly categories = signal<Category[]>([]);
+  readonly suppliers = signal<Supplier[]>([]);
+  readonly generating = signal(false);
   readonly serverErrors = signal<Record<string, string[]>>({});
   readonly generalError = signal<string | null>(null);
   readonly saving = signal(false);
@@ -41,6 +62,8 @@ export class ProductForm {
       validators: [Validators.required, Validators.maxLength(150)],
     }),
     category: new FormControl<number | null>(null, Validators.required),
+    barcode: new FormControl('', { nonNullable: true, validators: [barcodeValidator] }),
+    supplier: new FormControl<number | null>(null),
     price: new FormControl(0, {
       nonNullable: true,
       validators: [Validators.required, Validators.min(0)],
@@ -62,6 +85,15 @@ export class ProductForm {
       error: (err) => this.generalError.set(extractError(err)),
     });
 
+    // Listing suppliers needs the stock right; without it the field is hidden and the
+    // product keeps the supplier it has (the form still sends it back unchanged).
+    if (this.auth.can('manage_stock')) {
+      this.supplierApi.list().subscribe({
+        next: (list) => this.suppliers.set(list.filter((s) => s.is_active)),
+        error: () => undefined,
+      });
+    }
+
     if (this.id) {
       this.products.get(this.id).subscribe({
         next: (product) => {
@@ -70,6 +102,8 @@ export class ProductForm {
             sku: product.sku,
             name: product.name,
             category: product.category,
+            barcode: product.barcode ?? '',
+            supplier: product.supplier,
             price: Number(product.price),
             quantity: product.quantity,
             low_stock_threshold: product.low_stock_threshold,
@@ -103,6 +137,22 @@ export class ProductForm {
         this.toast.success(`Catégorie « ${category.name} » ajoutée.`);
       },
       error: (err) => this.toast.error(extractError(err, "Impossible d'ajouter la catégorie.")),
+    });
+  }
+
+  /** Ask the API for a free in-store EAN-13 (for products without a manufacturer code). */
+  generateBarcode() {
+    this.generating.set(true);
+    this.products.nextBarcode().subscribe({
+      next: ({ barcode }) => {
+        this.generating.set(false);
+        this.form.controls.barcode.setValue(barcode);
+        this.form.controls.barcode.markAsDirty();
+      },
+      error: (err) => {
+        this.generating.set(false);
+        this.toast.error(extractError(err, 'Impossible de générer un code-barres.'));
+      },
     });
   }
 

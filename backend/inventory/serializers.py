@@ -4,10 +4,20 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import Category, Product, Sale, SaleItem, StockMovement
+from .models import (
+    Category,
+    Product,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    Sale,
+    SaleItem,
+    StockMovement,
+    Supplier,
+)
 from .services import InsufficientStockError, apply_stock_change, lock_products
 
 MAX_SALE_LINES = 100
+MAX_ORDER_LINES = 100
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -16,8 +26,17 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ["id", "name", "description"]
 
 
+class SupplierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = [
+            "id", "name", "contact_name", "email", "phone", "address", "notes", "is_active",
+        ]
+
+
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source="category.name")
+    supplier_name = serializers.ReadOnlyField(source="supplier.name", default=None)
     is_low_stock = serializers.ReadOnlyField()
 
     class Meta:
@@ -25,8 +44,14 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             "id", "sku", "name", "category", "category_name", "price",
             "quantity", "low_stock_threshold", "is_low_stock",
+            "barcode", "supplier", "supplier_name",
             "image", "is_active",
         ]
+        extra_kwargs = {"barcode": {"allow_blank": True}}
+
+    def validate_barcode(self, value):
+        # No barcode is stored as NULL so that the unique constraint ignores it.
+        return value or None
 
 
 class StockMovementSerializer(serializers.ModelSerializer):
@@ -135,3 +160,88 @@ class SaleSerializer(serializers.ModelSerializer):
         sale.total = total
         sale.save(update_fields=["total"])
         return sale
+
+
+class PurchaseOrderLineSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source="product.name")
+    product_sku = serializers.ReadOnlyField(source="product.sku")
+    line_total = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = PurchaseOrderLine
+        fields = [
+            "product", "product_name", "product_sku", "quantity", "unit_cost", "line_total",
+        ]
+
+
+class PurchaseOrderSerializer(serializers.ModelSerializer):
+    lines = PurchaseOrderLineSerializer(many=True)
+    reference = serializers.ReadOnlyField()
+    supplier_name = serializers.ReadOnlyField(source="supplier.name")
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+    total = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = PurchaseOrder
+        fields = [
+            "id", "reference", "supplier", "supplier_name", "status", "expected_date",
+            "notes", "created_by", "created_at", "received_at", "total", "lines",
+        ]
+        read_only_fields = ["status", "created_at", "received_at"]
+
+    def validate_supplier(self, supplier):
+        if not supplier.is_active:
+            raise serializers.ValidationError("Ce fournisseur n'est plus actif.")
+        return supplier
+
+    def validate_lines(self, lines):
+        if not lines:
+            raise serializers.ValidationError("Un bon de commande doit contenir au moins une ligne.")
+        if len(lines) > MAX_ORDER_LINES:
+            raise serializers.ValidationError(
+                f"Un bon de commande ne peut pas dépasser {MAX_ORDER_LINES} lignes."
+            )
+        seen = set()
+        for line in lines:
+            product = line["product"]
+            if product.pk in seen:
+                raise serializers.ValidationError(
+                    f"Le produit « {product.name} » apparaît deux fois."
+                )
+            if not product.is_active:
+                raise serializers.ValidationError(
+                    f"Le produit « {product.name} » n'est plus en vente."
+                )
+            seen.add(product.pk)
+        return lines
+
+    def validate(self, attrs):
+        if self.instance and self.instance.status != PurchaseOrder.Status.DRAFT:
+            raise serializers.ValidationError(
+                "Seul un bon de commande en brouillon peut être modifié."
+            )
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        lines = validated_data.pop("lines")
+        order = PurchaseOrder.objects.create(
+            created_by=self.context["request"].user, **validated_data
+        )
+        PurchaseOrderLine.objects.bulk_create(
+            PurchaseOrderLine(order=order, **line) for line in lines
+        )
+        return order
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        lines = validated_data.pop("lines", None)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+        if lines is not None:
+            instance.lines.all().delete()
+            PurchaseOrderLine.objects.bulk_create(
+                PurchaseOrderLine(order=instance, **line) for line in lines
+            )
+        return instance

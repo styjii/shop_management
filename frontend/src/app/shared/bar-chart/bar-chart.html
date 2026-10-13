@@ -1,0 +1,50 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  class="w-full"
+  [attr.viewBox]="'0 0 ' + width + ' ' + height"
+  [attr.aria-label]="title()"
+>
+  @for (tick of ticks(); track tick.y) {
+    <line
+      [attr.x1]="left"
+      [attr.x2]="right"
+      [attr.y1]="tick.y"
+      [attr.y2]="tick.y"
+      stroke="currentColor"
+      stroke-opacity="0.15"
+    />
+    <text
+      [attr.x]="left - 6"
+      [attr.y]="tick.y + 3"
+      text-anchor="end"
+      font-size="10"
+      fill="currentColor"
+    >
+      {{ tick.label }}
+    </text>
+  }
+  @for (bar of bars(); track bar.labelX) {
+    <rect
+      [attr.x]="bar.x"
+      [attr.y]="bar.y"
+      [attr.width]="bar.width"
+      [attr.height]="bar.height"
+      rx="2"
+      class="fill-primary"
+    >
+      <title>{{ bar.label }} : {{ bar.value | currency: 'EUR' }}</title>
+    </rect>
+    @if (bar.showLabel) {
+      <text
+        [attr.x]="bar.labelX"
+        [attr.y]="baseline + 16"
+        text-anchor="middle"
+        font-size="10"
+        fill="currentColor"
+      >
+        {{ bar.label }}
+      </text>
+    }
+  }
+</svg>

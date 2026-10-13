@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { makeMovement, makeProduct, page } from '../../../../testing/factories';
+import { DownloadService } from '../../../core/download';
 import { ToastService } from '../../../core/toast';
 import { Movements } from './movements';
 
@@ -166,5 +167,31 @@ describe('Movements', () => {
       'Stock insuffisant pour « Eau ».',
     );
     expect(fixture.componentInstance.saving()).toBe(false);
+  });
+
+  it('exports the movements matching the filters as CSV', async () => {
+    const { fixture } = await setup();
+    const save = vi
+      .spyOn(TestBed.inject(DownloadService), 'save')
+      .mockImplementation(() => undefined);
+    fixture.componentInstance.kindFilter.setValue('OUT');
+    fixture.detectChanges();
+    movementList()[0].flush(page([makeMovement()]));
+
+    fixture.componentInstance.exportCsv();
+    const request = http.expectOne((r) => r.url === `${api}/movements/export/`);
+    expect(request.request.params.get('kind')).toBe('OUT');
+    request.flush(new Blob(['x']));
+    expect(save).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^mouvements-/));
+    expect(fixture.componentInstance.exporting()).toBe(false);
+  });
+
+  it('tells the user when the movements export fails', async () => {
+    const { fixture } = await setup();
+    fixture.componentInstance.exportCsv();
+    http
+      .expectOne((r) => r.url === `${api}/movements/export/`)
+      .flush(new Blob(['x']), { status: 403, statusText: 'Forbidden' });
+    expect(TestBed.inject(ToastService).toasts()[0].type).toBe('error');
   });
 });

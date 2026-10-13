@@ -71,6 +71,28 @@ export class SalePos {
     return this.cart().find((line) => line.product.id === product.id)?.quantity ?? 0;
   }
 
+  /**
+   * A barcode scanner types the code and presses Enter: look the product up by its barcode
+   * and put it in the cart. Any other text is just a search and is left alone.
+   */
+  scan() {
+    const code = this.search.value.trim();
+    if (!/^\d{8,13}$/.test(code)) return;
+    this.productApi.findByBarcode(code).subscribe({
+      next: (product) => {
+        this.search.setValue('');
+        if (!product) {
+          this.error.set(`Aucun produit ne correspond au code-barres ${code}.`);
+        } else if (!this.canAdd(product)) {
+          this.error.set(`« ${product.name} » : stock épuisé.`);
+        } else {
+          this.add(product);
+        }
+      },
+      error: (err) => this.error.set(extractError(err, 'Impossible de chercher ce code-barres.')),
+    });
+  }
+
   canAdd(product: Product) {
     return this.quantityInCart(product) < product.quantity;
   }

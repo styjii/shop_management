@@ -1,0 +1,129 @@
+@if (loading()) {
+  <span class="loading loading-spinner"></span>
+}
+
+@if (error(); as message) {
+  <div role="alert" class="alert alert-error mb-4">
+    <span>{{ message }}</span>
+  </div>
+  <a routerLink="/purchase-orders" class="btn">Retour aux bons de commande</a>
+}
+
+@if (order(); as o) {
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-bold">{{ o.reference }}</h1>
+      <span class="badge" [class]="statusOf(o).badge" data-testid="status">{{
+        statusOf(o).label
+      }}</span>
+    </div>
+    <div class="flex flex-wrap gap-2 print:hidden">
+      <a routerLink="/purchase-orders" class="btn btn-sm">Retour</a>
+      <button type="button" class="btn btn-sm" (click)="print()">Imprimer</button>
+      @if (o.status === 'DRAFT') {
+        <a [routerLink]="['/purchase-orders', o.id, 'edit']" class="btn btn-sm">Modifier</a>
+        <button type="button" class="btn btn-sm btn-error btn-outline" (click)="ask('delete')">
+          Supprimer
+        </button>
+        <button type="button" class="btn btn-sm btn-primary btn-outline" (click)="ask('send')">
+          Marquer comme envoyé
+        </button>
+      }
+      @if (o.status === 'DRAFT' || o.status === 'SENT') {
+        <button type="button" class="btn btn-sm btn-error btn-outline" (click)="ask('cancel')">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" (click)="ask('receive')">
+          Réceptionner
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="mb-4 grid gap-4 rounded-box bg-base-100 p-4 shadow sm:grid-cols-2 lg:grid-cols-4">
+    <div>
+      <div class="text-sm opacity-70">Fournisseur</div>
+      <div class="font-medium">{{ o.supplier_name }}</div>
+    </div>
+    <div>
+      <div class="text-sm opacity-70">Créé le</div>
+      <div class="font-medium">{{ o.created_at | date: 'dd/MM/yyyy' }} par {{ o.created_by }}</div>
+    </div>
+    <div>
+      <div class="text-sm opacity-70">Livraison prévue</div>
+      <div class="font-medium">
+        {{ o.expected_date ? (o.expected_date | date: 'dd/MM/yyyy') : '—' }}
+      </div>
+    </div>
+    <div>
+      <div class="text-sm opacity-70">Reçu le</div>
+      <div class="font-medium">
+        {{ o.received_at ? (o.received_at | date: 'dd/MM/yyyy HH:mm') : '—' }}
+      </div>
+    </div>
+    @if (o.notes) {
+      <div class="sm:col-span-2 lg:col-span-4">
+        <div class="text-sm opacity-70">Notes</div>
+        <div class="whitespace-pre-line">{{ o.notes }}</div>
+      </div>
+    }
+  </div>
+
+  <div class="overflow-x-auto rounded-box bg-base-100 shadow">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Produit</th>
+          <th class="text-right">Quantité</th>
+          <th class="text-right">Prix d'achat</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (line of o.lines; track line.product) {
+          <tr>
+            <td>
+              <div class="font-medium">{{ line.product_name }}</div>
+              <div class="text-xs opacity-70">{{ line.product_sku }}</div>
+            </td>
+            <td class="text-right">{{ line.quantity }}</td>
+            <td class="text-right">{{ line.unit_cost | currency: 'EUR' }}</td>
+            <td class="text-right">{{ line.line_total | currency: 'EUR' }}</td>
+          </tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3" class="text-right">Total</th>
+          <th class="text-right" data-testid="total">{{ o.total | currency: 'EUR' }}</th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+}
+
+@if (confirming(); as action) {
+  <div class="modal modal-open" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">{{ confirmations[action].title }}</h3>
+      <p class="py-4">{{ confirmations[action].text }}</p>
+      <div class="modal-action">
+        <button type="button" class="btn" [disabled]="working()" (click)="dismiss()">Retour</button>
+        <button
+          type="button"
+          class="btn"
+          [class.btn-error]="confirmations[action].danger"
+          [class.btn-primary]="!confirmations[action].danger"
+          [disabled]="working()"
+          (click)="confirm()"
+        >
+          @if (working()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          {{ confirmations[action].button }}
+        </button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="dismiss()"></div>
+  </div>
+}

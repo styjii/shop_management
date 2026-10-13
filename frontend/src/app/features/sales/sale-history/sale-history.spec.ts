@@ -5,6 +5,8 @@ import { provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { makeCurrentUser, makeManager, makeSale, page } from '../../../../testing/factories';
 import { AuthService } from '../../../core/auth';
+import { DownloadService } from '../../../core/download';
+import { ToastService } from '../../../core/toast';
 import { SaleHistory } from './sale-history';
 
 describe('SaleHistory', () => {
@@ -70,5 +72,27 @@ describe('SaleHistory', () => {
     const [request] = salesRequests();
     expect(request.request.params.get('page')).toBe('2');
     request.flush(page([], 45));
+  });
+
+  it('exports the sales as CSV', async () => {
+    const fixture = await setup(true);
+    const save = vi
+      .spyOn(TestBed.inject(DownloadService), 'save')
+      .mockImplementation(() => undefined);
+    fixture.componentInstance.exportCsv();
+    expect(fixture.componentInstance.exporting()).toBe(true);
+    http.expectOne(`${api}/sales/export/`).flush(new Blob(['x']));
+    expect(save).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^ventes-/));
+    expect(fixture.componentInstance.exporting()).toBe(false);
+  });
+
+  it('tells the user when the sales export fails', async () => {
+    const fixture = await setup(false);
+    fixture.componentInstance.exportCsv();
+    http
+      .expectOne(`${api}/sales/export/`)
+      .flush(new Blob(['x']), { status: 500, statusText: 'Error' });
+    expect(TestBed.inject(ToastService).toasts()[0].type).toBe('error');
+    expect(fixture.componentInstance.exporting()).toBe(false);
   });
 });

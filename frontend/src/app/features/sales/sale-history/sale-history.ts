@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, of, switchMap, tap } from 'rxjs';
 import { AuthService } from '../../../core/auth';
 import { extractError } from '../../../core/errors';
+import { ToastService } from '../../../core/toast';
 import { Sale } from '../../../models/inventory';
 import { SaleService } from '../../../services/sale';
 
@@ -16,6 +17,7 @@ import { SaleService } from '../../../services/sale';
 })
 export class SaleHistory {
   private saleApi = inject(SaleService);
+  private toast = inject(ToastService);
   protected readonly auth = inject(AuthService);
 
   readonly pageSize = 20; // must match PAGE_SIZE in the Django settings
@@ -23,6 +25,7 @@ export class SaleHistory {
   readonly sales = signal<Sale[]>([]);
   readonly count = signal(0);
   readonly loading = signal(true);
+  readonly exporting = signal(false);
   readonly error = signal<string | null>(null);
   readonly expanded = signal<number | null>(null);
   readonly page = signal(1);
@@ -50,6 +53,17 @@ export class SaleHistory {
           this.count.set(result.count);
         }
       });
+  }
+
+  exportCsv() {
+    this.exporting.set(true);
+    this.saleApi.exportCsv().subscribe({
+      next: () => this.exporting.set(false),
+      error: (err) => {
+        this.exporting.set(false);
+        this.toast.error(extractError(err, "L'export a échoué."));
+      },
+    });
   }
 
   goTo(page: number) {

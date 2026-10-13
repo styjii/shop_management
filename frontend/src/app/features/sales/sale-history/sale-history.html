@@ -1,6 +1,19 @@
 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
   <h1 class="text-2xl font-bold">Historique des ventes</h1>
-  <a routerLink="/sales" class="btn btn-primary btn-sm sm:btn-md">Nouvelle vente</a>
+  <div class="flex gap-2">
+    <button
+      type="button"
+      class="btn btn-sm sm:btn-md"
+      [disabled]="exporting()"
+      (click)="exportCsv()"
+    >
+      @if (exporting()) {
+        <span class="loading loading-spinner loading-xs"></span>
+      }
+      Exporter en CSV
+    </button>
+    <a routerLink="/sales" class="btn btn-primary btn-sm sm:btn-md">Nouvelle vente</a>
+  </div>
 </div>
 
 @if (error(); as message) {

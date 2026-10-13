@@ -9,6 +9,7 @@ import { provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { makeCurrentUser, makeManager, makeProduct, page } from '../../../../testing/factories';
 import { AuthService } from '../../../core/auth';
+import { DownloadService } from '../../../core/download';
 import { ToastService } from '../../../core/toast';
 import { ProductList } from './product-list';
 
@@ -157,5 +158,44 @@ describe('ProductList', () => {
     expect(text).toContain('Stock');
     expect(text).not.toContain('Modifier');
     expect(text).not.toContain('Nouveau produit');
+  });
+
+  it('exports the filtered products as CSV, without the page', async () => {
+    const { fixture } = await setup();
+    const save = vi
+      .spyOn(TestBed.inject(DownloadService), 'save')
+      .mockImplementation(() => undefined);
+    fixture.componentInstance.exportCsv();
+    const request = http.expectOne((r) => r.url === `${api}/products/export/`);
+    expect(request.request.params.get('ordering')).toBe('name');
+    expect(request.request.params.has('page')).toBe(false);
+    request.flush(new Blob(['x']));
+    expect(save).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^produits-/));
+    expect(fixture.componentInstance.exporting()).toBe(false);
+  });
+
+  it('tells the user when the products export fails', async () => {
+    const { fixture } = await setup();
+    fixture.componentInstance.exportCsv();
+    http
+      .expectOne((r) => r.url === `${api}/products/export/`)
+      .flush(new Blob(['x']), { status: 500, statusText: 'Error' });
+    expect(TestBed.inject(ToastService).toasts()[0].type).toBe('error');
+  });
+
+  it('shows the barcode under the SKU and links to the labels page for catalogue managers', async () => {
+    const { fixture } = await setup(true);
+    fixture.componentInstance.products.set([makeProduct({ barcode: '4006381333931' })]);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('4006381333931');
+    expect(element.querySelector('a[href="/products/labels"]')).not.toBeNull();
+  });
+
+  it('hides the labels link from sellers', async () => {
+    const { fixture } = await setup(false);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('a[href="/products/labels"]'),
+    ).toBeNull();
   });
 });

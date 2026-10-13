@@ -19,6 +19,10 @@ export interface Product {
   quantity: number;
   low_stock_threshold: number;
   is_low_stock: boolean;
+  /** EAN-8, UPC-A or EAN-13; null when the product has none. */
+  barcode: string | null;
+  supplier: number | null;
+  supplier_name: string | null;
   image: string | null;
   is_active: boolean;
 }
@@ -30,6 +34,8 @@ export interface ProductPayload {
   price: number;
   quantity: number;
   low_stock_threshold: number;
+  barcode: string;
+  supplier: number | null;
   is_active: boolean;
 }
 
@@ -164,4 +170,72 @@ export interface MovementPayload {
   kind: MovementKind;
   quantity: number;
   reason: string;
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  notes: string;
+  is_active: boolean;
+}
+
+export type SupplierPayload = Omit<Supplier, 'id'>;
+
+export type OrderStatus = 'DRAFT' | 'SENT' | 'RECEIVED' | 'CANCELLED';
+
+export const ORDER_STATUSES: { value: OrderStatus; label: string; badge: string }[] = [
+  { value: 'DRAFT', label: 'Brouillon', badge: 'badge-ghost' },
+  { value: 'SENT', label: 'Envoyé', badge: 'badge-info' },
+  { value: 'RECEIVED', label: 'Reçu', badge: 'badge-success' },
+  { value: 'CANCELLED', label: 'Annulé', badge: 'badge-error' },
+];
+
+export interface PurchaseOrderLine {
+  product: number;
+  product_name: string;
+  product_sku: string;
+  quantity: number;
+  unit_cost: string;
+  line_total: string;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  reference: string;
+  supplier: number;
+  supplier_name: string;
+  status: OrderStatus;
+  expected_date: string | null;
+  notes: string;
+  created_by: string;
+  created_at: string;
+  received_at: string | null;
+  total: string;
+  lines: PurchaseOrderLine[];
+}
+
+export interface PurchaseOrderPayload {
+  supplier: number;
+  expected_date: string | null;
+  notes: string;
+  lines: { product: number; quantity: number; unit_cost: number }[];
+}
+
+export interface SalesStats {
+  days: number;
+  from: string;
+  to: string;
+  totals: {
+    revenue: string;
+    sales_count: number;
+    items_sold: number;
+    average_basket: string;
+  };
+  daily: { date: string; revenue: string; sales_count: number }[];
+  top_products: { product: number; name: string; quantity: number; revenue: string }[];
+  by_category: { category: string; revenue: string }[];
 }

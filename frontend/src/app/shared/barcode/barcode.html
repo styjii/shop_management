@@ -1,0 +1,24 @@
+@if (modules()) {
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    role="img"
+    class="max-w-full"
+    [attr.viewBox]="'0 0 ' + width() + ' ' + height"
+    [attr.aria-label]="'Code-barres ' + value()"
+  >
+    <rect [attr.width]="width()" [attr.height]="height" fill="#fff" />
+    @for (bar of bars(); track bar.x) {
+      <rect [attr.x]="bar.x" y="2" [attr.width]="bar.width" [attr.height]="barHeight" fill="#000" />
+    }
+    <text
+      [attr.x]="width() / 2"
+      [attr.y]="height - 2"
+      text-anchor="middle"
+      font-family="monospace"
+      font-size="8"
+      fill="#000"
+    >
+      {{ value() }}
+    </text>
+  </svg>
+}

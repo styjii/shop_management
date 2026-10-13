@@ -113,4 +113,75 @@ describe('SalePos', () => {
     fixture.componentInstance.validate();
     http.expectNone(`${api}/sales/`);
   });
+
+  describe('barcode scan', () => {
+    const lookup = (code: string) =>
+      http.expectOne((r) => r.url === `${api}/products/` && r.params.get('barcode') === code);
+
+    it('puts the scanned product in the cart and clears the field', async () => {
+      const { fixture } = await setup();
+      const pos = fixture.componentInstance;
+      pos.search.setValue('4006381333931');
+      pos.scan();
+      const request = lookup('4006381333931');
+      expect(request.request.params.get('is_active')).toBe('true');
+      request.flush(page([water]));
+
+      expect(pos.cart().map((l) => l.product.id)).toEqual([1]);
+      expect(pos.search.value).toBe('');
+    });
+
+    it('adds one more unit for each scan of the same product', async () => {
+      const { fixture } = await setup();
+      const pos = fixture.componentInstance;
+      for (let i = 0; i < 2; i++) {
+        pos.search.setValue('4006381333931');
+        pos.scan();
+        lookup('4006381333931').flush(page([water]));
+      }
+      expect(pos.cart()[0].quantity).toBe(2);
+    });
+
+    it('tells the cashier when no product has this barcode', async () => {
+      const { fixture } = await setup();
+      const pos = fixture.componentInstance;
+      pos.search.setValue('5901234123457');
+      pos.scan();
+      lookup('5901234123457').flush(page([]));
+      expect(pos.cart()).toHaveLength(0);
+      expect(pos.error()).toContain('Aucun produit ne correspond au code-barres 5901234123457');
+    });
+
+    it('refuses a product that is out of stock', async () => {
+      const { fixture } = await setup();
+      const pos = fixture.componentInstance;
+      pos.search.setValue('4006381333931');
+      pos.scan();
+      lookup('4006381333931').flush(page([{ ...water, quantity: 0 }]));
+      expect(pos.cart()).toHaveLength(0);
+      expect(pos.error()).toContain('stock épuisé');
+    });
+
+    it('does not look anything up for an ordinary search text', async () => {
+      const { fixture } = await setup();
+      const pos = fixture.componentInstance;
+      for (const text of ['eau', '123', '40063813339312345']) {
+        pos.search.setValue(text);
+        pos.scan();
+      }
+      http.expectNone((r) => r.params.has('barcode'));
+    });
+
+    it('shows an error when the lookup fails', async () => {
+      const { fixture } = await setup();
+      const pos = fixture.componentInstance;
+      pos.search.setValue('4006381333931');
+      pos.scan();
+      lookup('4006381333931').flush(
+        { detail: 'Serveur indisponible.' },
+        { status: 503, statusText: 'Down' },
+      );
+      expect(pos.error()).toContain('Serveur indisponible');
+    });
+  });
 });

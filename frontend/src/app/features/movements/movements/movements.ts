@@ -29,6 +29,7 @@ export class Movements {
   readonly movements = signal<StockMovement[]>([]);
   readonly count = signal(0);
   readonly loading = signal(true);
+  readonly exporting = signal(false);
   readonly error = signal<string | null>(null);
   readonly filterProduct = signal<Product | null>(null);
   readonly kindFilter = new FormControl<MovementKind | ''>('', { nonNullable: true });
@@ -56,6 +57,18 @@ export class Movements {
     }),
     reason: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(200)] }),
   });
+
+  /** Download the movements matching the current filters (all pages) as CSV. */
+  exportCsv() {
+    this.exporting.set(true);
+    this.movementApi.exportCsv(this.criteria()).subscribe({
+      next: () => this.exporting.set(false),
+      error: (err) => {
+        this.exporting.set(false);
+        this.toast.error(extractError(err, "L'export a échoué."));
+      },
+    });
+  }
 
   constructor() {
     // /movements?product=12 opens the page for one product (link from the product list).

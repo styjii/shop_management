@@ -94,6 +94,62 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/movements/movements/movements').then((m) => m.Movements),
       },
+      {
+        path: 'stats',
+        title: 'Statistiques de ventes',
+        loadComponent: () =>
+          import('./features/stats/sales-stats/sales-stats').then((m) => m.SalesStatsPage),
+      },
+      {
+        path: 'products/labels',
+        title: 'Étiquettes de codes-barres',
+        canActivate: [capabilityGuard('manage_catalog')],
+        loadComponent: () =>
+          import('./features/products/product-labels/product-labels').then((m) => m.ProductLabels),
+      },
+      {
+        path: 'suppliers',
+        title: 'Fournisseurs',
+        canActivate: [capabilityGuard('manage_stock')],
+        loadComponent: () =>
+          import('./features/suppliers/suppliers/suppliers').then((m) => m.Suppliers),
+      },
+      {
+        path: 'purchase-orders',
+        title: 'Bons de commande',
+        canActivate: [capabilityGuard('manage_stock')],
+        loadComponent: () =>
+          import('./features/purchase-orders/purchase-order-list/purchase-order-list').then(
+            (m) => m.PurchaseOrderList,
+          ),
+      },
+      {
+        path: 'purchase-orders/new',
+        title: 'Nouveau bon de commande',
+        canActivate: [capabilityGuard('manage_stock')],
+        loadComponent: () =>
+          import('./features/purchase-orders/purchase-order-form/purchase-order-form').then(
+            (m) => m.PurchaseOrderForm,
+          ),
+      },
+      {
+        path: 'purchase-orders/:id/edit',
+        title: 'Modifier le bon de commande',
+        canActivate: [capabilityGuard('manage_stock')],
+        loadComponent: () =>
+          import('./features/purchase-orders/purchase-order-form/purchase-order-form').then(
+            (m) => m.PurchaseOrderForm,
+          ),
+      },
+      {
+        path: 'purchase-orders/:id',
+        title: 'Bon de commande',
+        canActivate: [capabilityGuard('manage_stock')],
+        loadComponent: () =>
+          import('./features/purchase-orders/purchase-order-detail/purchase-order-detail').then(
+            (m) => m.PurchaseOrderDetail,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

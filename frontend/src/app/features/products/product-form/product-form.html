@@ -80,6 +80,63 @@
       </div>
     </fieldset>
 
+    <fieldset class="fieldset sm:col-span-2">
+      <legend class="fieldset-legend">Code-barres (facultatif)</legend>
+      <div class="join w-full">
+        <input
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          class="input join-item w-full"
+          formControlName="barcode"
+          placeholder="EAN-13, EAN-8 ou UPC-A"
+          [class.input-error]="form.controls.barcode.invalid || errorsFor('barcode').length > 0"
+        />
+        <button
+          type="button"
+          class="btn join-item"
+          [disabled]="generating()"
+          (click)="generateBarcode()"
+        >
+          @if (generating()) {
+            <span class="loading loading-spinner loading-xs"></span>
+          }
+          Générer
+        </button>
+      </div>
+      @if (form.controls.barcode.errors?.['gtin']) {
+        <p class="label text-error">
+          Code-barres invalide : 8, 12 ou 13 chiffres avec une clé de contrôle correcte.
+        </p>
+      }
+      @for (message of errorsFor('barcode'); track message) {
+        <p class="label text-error">{{ message }}</p>
+      }
+      <p class="label">
+        « Générer » crée un code interne (commençant par 2) pour un produit sans code fabricant.
+      </p>
+      @if (form.controls.barcode.value && !form.controls.barcode.invalid) {
+        <div class="mt-2 max-w-xs">
+          <app-barcode [value]="form.controls.barcode.value" />
+        </div>
+      }
+    </fieldset>
+
+    @if (auth.can('manage_stock')) {
+      <fieldset class="fieldset sm:col-span-2">
+        <legend class="fieldset-legend">Fournisseur habituel (facultatif)</legend>
+        <select class="select w-full" formControlName="supplier" aria-label="Fournisseur">
+          <option [ngValue]="null">Aucun</option>
+          @for (s of suppliers(); track s.id) {
+            <option [ngValue]="s.id">{{ s.name }}</option>
+          }
+        </select>
+        @for (message of errorsFor('supplier'); track message) {
+          <p class="label text-error">{{ message }}</p>
+        }
+      </fieldset>
+    }
+
     <fieldset class="fieldset">
       <legend class="fieldset-legend">Prix (€)</legend>
       <input

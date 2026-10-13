@@ -15,6 +15,14 @@ Pour signaler une vulnérabilité, n'ouvrez pas d'issue publique : utilisez l'on
 - [ ] Sauvegardes de la base (`pg_dump`) et de `media/`
 - [ ] `pip-audit` et `npm audit` à jour
 
+## Exports, codes-barres et achats
+
+- Les exports CSV exigent un jeton et respectent les droits : un vendeur n'exporte que ses ventes, les mouvements et les bons de commande demandent le droit « stock ».
+- Les textes saisis par les utilisateurs (noms, motifs) qui commencent par `=`, `+`, `-` ou `@` sont préfixés d'une apostrophe dans les CSV : ils ne s'exécutent pas comme formule dans Excel.
+- Les codes-barres sont validés (clé de contrôle) et dessinés en SVG par l'application, sans injecter de HTML.
+- La réception d'un bon de commande verrouille le bon et les produits dans une transaction : le stock n'est ajouté qu'une fois, même avec deux clics simultanés.
+- Fournisseurs et bons de commande sont réservés au droit « stock ».
+
 ## Limites connues
 
 - Le jeton d'accès (15 min) reste en mémoire dans l'onglet Angular ; le jeton de rafraîchissement
