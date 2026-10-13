@@ -1,0 +1,11 @@
+# Maintenance quotidienne de Shop Management : purge des jetons JWT et sessions expirés.
+# Installation : adaptez les chemins et l'utilisateur, puis
+#   sudo install -m 644 deploy/shop-maintenance.cron.example /etc/cron.d/shop-maintenance
+# (le nom du fichier dans /etc/cron.d ne doit pas contenir de point.)
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+# Les échecs (sortie sur stderr) sont envoyés par e-mail à cette adresse si un MTA est installé.
+MAILTO=root
+
+# Tous les jours à 03:17 (heure creuse), avec l'utilisateur qui fait tourner Gunicorn.
+17 3 * * * shop /bin/bash /srv/shop/deploy/maintenance.sh

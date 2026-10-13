@@ -188,7 +188,9 @@ shop_management/
 │   └── prod.txt                   # production (gunicorn, PostgreSQL)
 ├── .github/workflows/ci.yml       # intégration continue (GitHub Actions)
 ├── deploy/
-│   └── nginx.conf.example         # Nginx : HTTPS, CSP, en-têtes, /media sécurisé
+│   ├── nginx.conf.example         # Nginx : HTTPS, CSP, en-têtes, /media sécurisé
+│   ├── maintenance.sh             # purge des jetons JWT et sessions expirés
+│   └── shop-maintenance.cron.example  # planification cron quotidienne
 ├── SECURITY.md                    # politique et checklist de production
 ├── .env.example                   # modèle de configuration (sans secret)
 ├── .gitignore
@@ -435,6 +437,66 @@ python manage.py check --deploy
 pip-audit -r requirements/base.txt
 cd frontend && npm audit
 ```
+
+## Maintenance planifiée
+
+Deux tables grossissent en continu : les jetons de rafraîchissement JWT (`token_blacklist`, un par connexion et par renouvellement) et les sessions de l'administration Django. Le script `deploy/maintenance.sh` les purge chaque jour avec les commandes Django `flushexpiredtokens` et `clearsessions`, sans dépendance supplémentaire (bash, cron, `flock`, `logger`).
+
+- Seul ce qui est **expiré** est supprimé : les jetons valides, les jetons révoqués non encore expirés (ils doivent rester refusés) et les sessions actives sont conservés.
+- Fréquence : **tous les jours à 03:17**. Le jeton de rafraîchissement dure 1 jour : une purge quotidienne suffit.
+- Pas d'exécutions concurrentes : un verrou (`flock`) fait ignorer toute exécution lancée pendant qu'une autre tourne encore. Chaque commande a un délai maximal de 10 minutes.
+- Les deux commandes sont toujours lancées, même si la première échoue ; le script se termine alors avec un code non nul.
+
+### Installation (serveur Linux propre)
+
+Les chemins ci-dessous supposent l'application dans `/srv/shop` (comme `nginx.conf.example`), son environnement virtuel dans `/srv/shop/.venv` et un utilisateur système `shop` qui fait tourner Gunicorn. Adaptez-les à votre installation.
+
+```bash
+# 1. Dossier d'état (verrou et date de la dernière réussite), propriété de l'utilisateur de l'application
+sudo install -d -o shop -g shop -m 750 /var/lib/shop-management
+
+# 2. Le fichier d'environnement doit être lisible par cet utilisateur (secrets : pas pour les autres)
+sudo chown shop:shop /srv/shop/.env && sudo chmod 600 /srv/shop/.env
+
+# 3. Test manuel, avec le même utilisateur que cron
+sudo -u shop /bin/bash /srv/shop/deploy/maintenance.sh && echo "OK"
+
+# 4. Installer la planification (adaptez chemins, utilisateur et MAILTO dans le fichier)
+sudo install -m 644 /srv/shop/deploy/shop-maintenance.cron.example /etc/cron.d/shop-maintenance
+```
+
+Le script cherche le fichier d'environnement dans `/srv/shop/.env` puis `/srv/shop/backend/.env` (autre emplacement possible : variable `ENV_FILE`). Il lit les lignes `CLE=valeur` sans les exécuter (les valeurs avec espaces ou `<…>` sont acceptées, les commentaires en fin de ligne ne le sont pas). Les variables suivantes sont facultatives : `APP_DIR`, `PYTHON`, `STATE_DIR`, `COMMAND_TIMEOUT` (600 s) et `MAX_AGE_HOURS` (36 h).
+
+Le nom du fichier dans `/etc/cron.d` ne doit pas contenir de point (Debian et Ubuntu l'ignorent sinon). La base de données doit être celle de la production (`DB_*` dans l'environnement) : le script n'a pas besoin d'être lancé par `root`.
+
+### Journaux et détection des erreurs
+
+- Journaux : syslog/journald, étiquette `shop-maintenance` (début, fin et erreur de chaque commande).
+
+  ```bash
+  journalctl -t shop-maintenance --since "2 days ago"       # systemd
+  journalctl -t shop-maintenance -p err                      # erreurs seulement
+  grep shop-maintenance /var/log/syslog                      # sans journald
+  ```
+
+- En cas d'échec, le script écrit aussi sur `stderr` : cron l'envoie par e-mail à `MAILTO` (un MTA est nécessaire) et le code de sortie est 1. Il n'écrit rien d'autre sur `stderr` quand tout va bien : pas de courrier inutile.
+- Supervision : `maintenance.sh --check` quitte avec le code 1 si aucune exécution réussie n'a eu lieu depuis plus de 36 h (le fichier `last_success` est mis à jour à chaque réussite). À brancher sur votre outil de surveillance ou sur un cron de contrôle.
+
+### Vérifier que ça fonctionne
+
+```bash
+# Exécution immédiate puis contrôle
+sudo -u shop /bin/bash /srv/shop/deploy/maintenance.sh; echo "code de sortie : $?"
+sudo -u shop /bin/bash /srv/shop/deploy/maintenance.sh --check
+
+# Nombre de lignes avant / après (à lancer avec l'environnement chargé)
+cd /srv/shop/backend && /srv/shop/.venv/bin/python manage.py shell -c "
+from django.contrib.sessions.models import Session
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+print('jetons', OutstandingToken.objects.count(), '| sessions', Session.objects.count())"
+```
+
+Les tests `backend/core/test_maintenance.py` vérifient que seuls les jetons et sessions expirés sont supprimés ; la CI contrôle le script avec ShellCheck.
 
 ## Feuille de route
 

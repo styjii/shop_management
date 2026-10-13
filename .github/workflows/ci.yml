@@ -43,6 +43,9 @@ jobs:
       - name: Lint (Ruff)
         run: .venv/bin/ruff check backend
 
+      - name: Lint the maintenance script (ShellCheck)
+        run: shellcheck deploy/maintenance.sh
+
       - name: Type check (Pyright)
         run: .venv/bin/pyright
 

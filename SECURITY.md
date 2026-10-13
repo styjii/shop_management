@@ -13,6 +13,7 @@ Pour signaler une vulnérabilité, n'ouvrez pas d'issue publique : utilisez l'on
 - [ ] `REGISTRATION_ENABLED=0` si l'inscription libre n'est pas souhaitée
 - [ ] HTTPS (Let's Encrypt), `deploy/nginx.conf.example` adapté
 - [ ] Sauvegardes de la base (`pg_dump`) et de `media/`
+- [ ] Purge planifiée des jetons et sessions expirés (`deploy/maintenance.sh` + cron, voir README « Maintenance planifiée »)
 - [ ] `pip-audit` et `npm audit` à jour
 
 ## Exports, codes-barres et achats
